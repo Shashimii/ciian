@@ -1,0 +1,129 @@
+---
+description: UI/design conventions for Ciian pages and components
+globs: resources/js/**/*.tsx
+alwaysApply: true
+---
+
+# Design Conventions
+
+## Uniformity (always)
+
+- Keep chrome consistent across related surfaces: same control placement, grouping, sizing, and hover behavior.
+- Icon-only buttons **must** have a hover tooltip (use `Tooltip` + `TooltipTrigger` + `TooltipContent`) with a short label matching `aria-label`.
+- Group related toolbar actions in one bordered bar (`rounded-lg border bg-background/90 p-1 shadow-sm backdrop-blur`) instead of scattering separate controls.
+- Reuse the same pattern when a control appears in more than one mode (e.g. map and list): same corner, same container styles, same tooltip wording.
+- Prefer existing shared components (`ViewModeToggle`, `Heading`, `FormSidebar`, `DataTable`, `Modal` / `ConfirmDialog`, `components/ui/*`) over one-off variants.
+- Do not introduce a new visual language for a single page when a sibling page already solved the same UI problem.
+
+## Breadcrumb bar actions
+
+Primary page actions for list/index screens live in the breadcrumb header bar (right side), not in a page `Heading` row.
+
+- Set them with Inertia `setLayoutProps({ headerActions })` inside a `useEffect` (never during render). Call `resetLayoutProps()` on unmount.
+- Primary “create / new” actions use a leading `Plus` icon at `size-4` before the label (e.g. `New user`, `New role`).
+- When the page supports row selection for bulk delete, show a destructive action in the same header group when one or more rows are selected (e.g. `Delete 5 users`), with a leading `Trash2` icon at `size-4`.
+- Selection-dependent header actions must **fade** in and out (`transition-opacity duration-200`): keep mounted while fading out, then unmount after ~200ms; keep the last count label during the exit fade.
+- Put header action buttons in one `flex items-center gap-2` group.
+
+## Page headers
+
+- A page header (title + subtext) is used **only** when the page has action button(s) in its **in-page** header row (not the breadcrumb bar).
+- If a page has in-page header actions: render a title and a short subtext on the left, with the action button(s) on the right (`flex items-start justify-between`). Use the `Heading` component for the title + description.
+- Keep the header close to the content: give the header row `mb-4` and pass `className="mb-0"` to `Heading` so its default `mb-8` doesn't stack with the row margin.
+- If a page has **no** in-page header actions (e.g. the dashboard, or list pages that only use breadcrumb `headerActions`): render **no** page header at all — the breadcrumb bar provides context. Do not add a lone title or an intro/subtitle paragraph.
+- Never add a standalone description paragraph without a title.
+
+## Buttons
+
+- Primary “create / new” actions use a leading `Plus` icon at `size-4` before the label (e.g. `New role`, `New System`, `New table`).
+- Destructive bulk actions use `variant="destructive"` with a leading `Trash2` icon at `size-4`.
+- Match sibling pages: same icon size, placement, and casing pattern for equivalent actions.
+- Icon-only buttons still require a hover tooltip (see Uniformity above).
+
+## Data tables
+
+Use the shared `DataTable` (`@/components/data-table`) for list indexes.
+
+- Selection (when needed): enable `selection` so the checkbox column is **first**.
+- Row delete (when needed): pass `onDelete`. The delete column has a **blank header**, a centered `Trash2` icon button (`text-destructive`, `hover:bg-destructive/10`), tooltip/`aria-label` **Delete**, and `stopPropagation` so it does not fire `onRowClick`.
+- Row publish (when needed): pass `onPublish` / `canPublish`. Unpublished rows use an `Upload` icon with tooltip/`aria-label` **Publish**. Published rows with pending `unpub_shape` changes use `isSync` so the action shows a `RefreshCw` icon with tooltip/`aria-label` **Sync**. Show for unpublished tables and for published tables with pending changes.
+- Prefer `onRowClick` to open edit in a `FormSidebar` rather than a separate edit icon column.
+- Do **not** use `window.confirm` / `alert` for delete — use `ConfirmDialog`.
+
+## Modals & confirmations
+
+Use `Modal` / `ConfirmDialog` from `@/components/modal`. Do **not** use browser `confirm()` or `alert()`. Prefer these over raw `Dialog` for app-facing prompts.
+
+### Visual layout (required)
+
+Match the centered status-dialog pattern:
+
+1. **Icon** (optional on `Modal`, default on `ConfirmDialog`) — `size-12` circular badge above the title; icon glyph at `size-6`.
+   - `tone` / `variant`: `default` → `bg-primary/15 text-primary`; `success` → `bg-emerald-500/15 text-emerald-500` + `Check`; `destructive` → `bg-destructive/15 text-destructive` + `TriangleAlert`.
+2. **Title** — centered, `text-xl font-semibold tracking-tight`.
+3. **Description** — centered, `text-sm leading-relaxed text-muted-foreground`.
+4. **Actions** — one row, equal width: Cancel `variant="outline" size="lg" className="flex-1"`, confirm `size="lg" className="flex-1"` (`default` or `destructive`). Footer uses `flex-row gap-3`.
+5. **Chrome** — `rounded-xl p-8 sm:max-w-md gap-6`; `showCloseButton` defaults to **false** (no X). Dismiss via Cancel, overlay click, or Escape.
+
+### Behavior
+
+- Destructive confirms: `ConfirmDialog` with `variant="destructive"`, clear title + description, confirm label like `Delete` / `Deactivate`.
+- Success-style confirms: `variant="success"` (check icon).
+- Keep `open` separate from the pending payload so content stays stable during close; clear payload after ~200ms.
+- Cancel uses `DialogClose` (or controlled `onOpenChange(false)`) so the overlay unmounts cleanly.
+- Block dismiss while `processing` is true.
+
+## Form sidebars
+
+- Use `FormSidebar` (`@/components/form-sidebar`) for create/edit panels: right sheet, `sm:max-w-2xl`, children own body/footer so borders can span full width.
+- Open create from breadcrumb `headerActions`; open edit from `DataTable` `onRowClick`.
+
+## Icon + name editors (sheets / side panels)
+
+When an entity has a changeable icon and a name field (roles, tables, map edit panels):
+
+- Place the icon and name on one row: `flex items-end gap-3`.
+- Icon control: clickable `size-12` button (`rounded-xl border bg-muted/40`), icon at `size-7`, with hover border/background and a **Change icon** tooltip/`aria-label`. Do **not** use a separate “Change icon” text link.
+- Name field: `flex-1` beside the icon (label + input stacked). Put the name field **first in the DOM** and use `order-1` / `order-2` so sheet auto-focus prefers the input. For the Change icon control, use a **hover-only** controlled tooltip (`open` driven by `onPointerEnter` / `onPointerLeave`) so sheet focus does not show the popover on open.
+- Icon picker opens below that row: full-width responsive grid (`grid-cols-6 sm:grid-cols-8 lg:grid-cols-12 gap-2`) with compact `h-10` option buttons (active: `border-primary bg-primary/10 text-primary`).
+- Keep the same pattern across list sheets and map floating panels; only the picker placement may differ (inline vs adjacent panel) when space requires it.
+
+## Layout & structure
+
+- Pages use `AppLayout` (via the global resolver) with a `PageName.layout = { breadcrumbs: [...] }` static.
+- Full-screen experiences (e.g. the editor) opt out of `AppLayout` in `app.tsx` and provide their own chrome.
+- Wrap page content in `px-4 py-6` (or a centered `max-w-*` for forms).
+
+## Components & styling
+
+- Reuse the existing `components/ui/*` (shadcn/radix) kit before writing new components.
+- Use theme tokens (`bg-background`, `text-muted-foreground`, `border`, `bg-primary/10`, `text-destructive`) — never hardcoded colors, so dark mode works.
+- Group related content in bordered sections/`Card`s; keep vertical rhythm with `space-y-*` and `gap-*`.
+- Use `lucide-react` icons at `size-4`/`size-5`; verify the icon name exists before importing.
+
+## Validation
+
+- Never rely on browser HTML5 validation popups (`required`, `pattern`, native “Please fill out this field.” tooltips).
+- Always use `noValidate` on app forms that submit to Laravel, and show errors with `InputError` from server (or matching client) validation messages.
+- Prefer Laravel Form Request validation as the source of truth; inline errors under each field.
+- **Clear on edit:** when a field shows a validation error (e.g. required), clear that field’s error as soon as the user starts editing it — typing, changing a select/toggle, or otherwise updating the control. Use Inertia `clearErrors('field')` (or the local equivalent). Do this for **every** form field that can display an `InputError`, not only required checks. Do not wait for the next submit to hide the message.
+
+## Tags / System badges
+
+Tags are always rendered as **pill badges** via `TagBadge` (`@/components/tag-badge`) — never plain text or a bare `Badge` without an icon.
+
+- In the UI, label this column/field **System** (DB column remains `tag`).
+- Shape: `rounded-full`, icon (`size-3.5`) + label, `gap-1.5`, `px-2.5 py-0.5`, `text-xs font-medium`.
+- Light mode: soft tinted background (`bg-{color}-500/15`) + matching text.
+- Dark mode: dark fill (`dark:bg-background`) + thin colored border + matching text.
+- **Ciian** tag (`tag === 'ciian'`): violet tint + **Sparkles** icon.
+- **No System** (`tag === 'no_system'`): muted badge + **CircleDashed** icon; UI label **No System**. Stored on `ciian_int_tbl`.
+- **System tables** (`ciian_sys_tbl`): badge label is the system name; icon comes from the parent `System.icon` (via `getSystemIcon`).
+- **Internal tables** (`ciian_int_tbl`): badge label is `tag`; icon comes from the row’s `icon` column (default `Sparkles` for Ciian, `CircleDashed` for No System).
+- On create: System is selectable (**No System**, **Ciian**, + available systems). On edit: System is **locked** (read-only badge).
+- **Ciian** and **No System** → `ciian_int_tbl`. Real systems → `ciian_sys_tbl`.
+- New table form uses a **column builder** (not raw JSON). Auto Increment `id` is always present and locked.
+
+## Navigation
+
+- Use Inertia `<Link>` (not `<a>`) for internal navigation.
