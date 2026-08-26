@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Admin settings
+| Account settings
 |--------------------------------------------------------------------------
 |
-| Loaded inside the /admin prefix from routes/admin.php.
-| Paths resolve to /admin/settings/...
+| Profile, security, and appearance for any authenticated user.
+| Paths resolve to /settings/...
 |
 */
 
