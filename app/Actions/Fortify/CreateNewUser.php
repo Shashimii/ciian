@@ -25,10 +25,20 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
+        $userRoleId = Role::query()->firstOrCreate(
+            ['slug' => Role::USER],
+            [
+                'name' => 'User',
+                'description' => 'Default role with no privileges. Access is limited to the main index page only.',
+                'icon' => 'User',
+                'locked' => true,
+            ],
+        )->id;
+
         return User::create([
             'username' => $input['username'],
             'email' => $input['email'],
-            'role' => Role::USER,
+            'role_id' => $userRoleId,
             'password' => $input['password'],
         ]);
     }

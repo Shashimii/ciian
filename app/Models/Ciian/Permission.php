@@ -25,11 +25,18 @@ class Permission extends Model
     /** @use HasFactory<PermissionFactory> */
     use HasFactory;
 
+    public const ROOT = 'root';
+
     /**
      * @return BelongsToMany<Role, $this>
      */
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class);
+    }
+
+    public function isRoot(): bool
+    {
+        return $this->slug === self::ROOT;
     }
 }

@@ -62,10 +62,11 @@ class CiianInternalTableSeeder extends Seeder
                     'unique' => true,
                 ],
                 [
-                    'name' => 'role',
-                    'type' => 'string',
+                    'name' => 'role_id',
+                    'type' => 'foreignId',
                     'nullable' => false,
-                    'indexed' => true,
+                    'references' => 'roles.id',
+                    'on_delete' => 'restrict',
                 ],
                 [
                     'name' => 'email_verified_at',
