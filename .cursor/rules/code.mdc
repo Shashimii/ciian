@@ -54,7 +54,7 @@ Do **not** put platform models back in `App\Models\` root.
 ## Internal vs system table shapes
 
 - **Created systems:** `ciian_sys` + `ciian_sys_tbl` (`System` / `SystemTable`) — per-system table shapes (`system_id` required).
-- **Ciian + No System internal:** `ciian_int_tbl` (`InternalTable`) — Accounts shapes (`tag=ciian`) and user tables with **No System** (`tag=no_system`); seeded Accounts rows by `CiianInternalTableSeeder` (invoked from `RootAccountSeeder`).
+- **Ciian + No System internal:** `ciian_int_tbl` (`InternalTable`) — Accounts shapes (`tag=ciian`) and user tables with **No System** (`tag=no_system`); seeded Accounts rows by `CiianInternalTableSeeder` (invoked from `SystemDefaultsSeeder`).
 - Rows use a `tag` column (DB default `ciian`) and an `icon` column (DB default `Sparkles`) so ownership/grouping and badge icons are data-driven — filter with `InternalTable::tagged($tag)`, do not hardcode table slugs.
 - Tables list also includes `ciian_sys_tbl` rows; those badges use the parent **system** icon, not `ciian_int_tbl.icon`.
 - Do **not** store Ciian / No System shapes in `ciian_sys` / `ciian_sys_tbl`.

@@ -307,10 +307,11 @@ A notes table with an id, a title, an integer, a decimal, and timestamps:
       "unique": true
     },
     {
-      "name": "role",
-      "type": "string",
+      "name": "role_id",
+      "type": "foreignId",
       "nullable": false,
-      "indexed": true
+      "references": "roles.id",
+      "on_delete": "restrict"
     },
     {
       "name": "email_verified_at",
