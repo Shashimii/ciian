@@ -47,7 +47,7 @@ class SystemDefaultsSeeder extends Seeder
             ['slug' => Role::ROOT],
             [
                 'name' => 'Root',
-                'description' => 'Full access to Ciian. Immutable — cannot be altered or deleted.',
+                'description' => 'Full access to System. Immutable cannot be altered or deleted.',
                 'icon' => 'Crown',
                 'locked' => true,
             ],
