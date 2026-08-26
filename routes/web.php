@@ -2,10 +2,23 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+/*
+|--------------------------------------------------------------------------
+| Guest pages (unauthenticated)
+|--------------------------------------------------------------------------
+*/
+require __DIR__.'/guest.php';
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
-});
+/*
+|--------------------------------------------------------------------------
+| Platform administration (developers / admins)
+|--------------------------------------------------------------------------
+*/
+require __DIR__.'/admin.php';
 
-require __DIR__.'/settings.php';
+/*
+|--------------------------------------------------------------------------
+| Created systems (authenticated system pages)
+|--------------------------------------------------------------------------
+*/
+require __DIR__.'/systems.php';
