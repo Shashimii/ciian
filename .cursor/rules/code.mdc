@@ -7,21 +7,26 @@ alwaysApply: true
 
 ## Model directories
 
-Platform / internal Ciian tables live under `App\Models\Ciian`.
+Platform models live under `App\Models\Ciian`, grouped by concern:
 
 ```text
+app/Models/Ciian/Database/CiianConfig.php
+app/Models/Ciian/Database/System.php
+app/Models/Ciian/Database/SystemTable.php
+app/Models/Ciian/Database/InternalTable.php
+
+app/Models/Ciian/Component/Component.php
+
 app/Models/Ciian/User.php
 app/Models/Ciian/Role.php
 app/Models/Ciian/Permission.php
-app/Models/Ciian/System.php
-app/Models/Ciian/SystemTable.php
-app/Models/Ciian/InternalTable.php
-app/Models/Ciian/CiianConfig.php
 ```
 
-Matching factories:
+Matching factories mirror the same concern folders:
 
 ```text
+database/factories/Ciian/Database/...
+database/factories/Ciian/Component/...
 database/factories/Ciian/UserFactory.php
 ```
 

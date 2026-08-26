@@ -13,6 +13,7 @@ When you publish a table, Ciian reads this shape, updates the real database, and
 
 Related code:
 
+- `App\Models\Ciian\Database\*` — `CiianConfig`, `System`, `SystemTable`, `InternalTable`
 - `App\Support\TableShapeBuilder` — builds and normalizes shapes
 - `App\Support\ColumnTypes` — allowed column types and which options each type supports
 

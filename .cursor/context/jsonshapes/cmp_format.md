@@ -12,7 +12,7 @@ Default building blocks are seeded from `Database\Seeders\CiianComponentSeeder`.
 
 Related code:
 
-- `App\Models\Ciian\Component` — model (`type = block` for building blocks)
+- `App\Models\Ciian\Component\Component` — model (`type = block` for building blocks)
 - `resources/js/components/blocks/` — generated / checked-in TSX for default blocks
 - `resources/js/pages/component/index.tsx` — Components index / previews
 
