@@ -13,7 +13,9 @@ When you publish a table, Ciian reads this shape, updates the real database, and
 
 Related code:
 
-- `App\Models\Ciian\Database\*` — `CiianConfig`, `System`, `SystemTable`, `InternalTable`
+- `App\Models\Ciian\Core\CiianConfig` — platform `sys_slug` / branding config
+- `App\Models\Ciian\Database\InternalTable` — Ciian / No System table shapes
+- `App\Models\Ciian\System\*` — `System`, `SystemTable`
 - `App\Support\TableShapeBuilder` — builds and normalizes shapes
 - `App\Support\ColumnTypes` — allowed column types and which options each type supports
 

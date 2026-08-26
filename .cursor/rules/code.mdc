@@ -9,11 +9,19 @@ alwaysApply: true
 
 Platform models live under `App\Models\Ciian`, grouped by concern:
 
+- **`Ciian/Core`** — platform core config (`ciian_config`).
+- **`Ciian/Database`** — Database Engine internals only (`ciian_int_tbl`). Do not put Core, System, Component, or Accounts models here.
+- **`Ciian/System`** — created-system models (`ciian_sys`, `ciian_sys_tbl`).
+- **`Ciian/Component`** — Component Engine only (`ciian_cmp`, etc.).
+- **`Ciian/` root** — shared platform Accounts models (User, Role, Permission) until they get their own concern folder.
+
 ```text
-app/Models/Ciian/Database/CiianConfig.php
-app/Models/Ciian/Database/System.php
-app/Models/Ciian/Database/SystemTable.php
+app/Models/Ciian/Core/CiianConfig.php
+
 app/Models/Ciian/Database/InternalTable.php
+
+app/Models/Ciian/System/System.php
+app/Models/Ciian/System/SystemTable.php
 
 app/Models/Ciian/Component/Component.php
 
@@ -25,16 +33,20 @@ app/Models/Ciian/Permission.php
 Matching factories mirror the same concern folders:
 
 ```text
+database/factories/Ciian/Core/...
 database/factories/Ciian/Database/...
+database/factories/Ciian/System/...
 database/factories/Ciian/Component/...
 database/factories/Ciian/UserFactory.php
 ```
 
-Per-system generated models (future) use the system name as the folder:
+Per-system **generated** models (from publish) use the system name as the folder — not under `Ciian/Core`, `Ciian/Database`, or `Ciian/System`:
 
 ```text
 app/Models/Inventory/...
 app/Models/Payroll/...
+app/Models/Ciian/...   # published Ciian-tag physical tables (generated)
+app/Models/NoSystem/...
 ```
 
 Do **not** put platform models back in `App\Models\` root.
