@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, SystemTable> $tables
+ * @property-read int|null $tables_count
  */
 #[Fillable(['name', 'slug', 'icon'])]
 class System extends Model

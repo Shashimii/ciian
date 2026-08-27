@@ -3,6 +3,7 @@ export type SystemBadge = {
     label: string;
     slug: string;
     icon: string;
+    color?: string | null;
 };
 
 export type TableColumnShape = {

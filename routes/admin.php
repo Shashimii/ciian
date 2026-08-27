@@ -21,6 +21,8 @@ Route::prefix('admin')->group(function () {
         Route::middleware('permission:systems.manage')->group(function () {
             Route::get('systems', [SystemController::class, 'index'])->name('systems.index');
             Route::post('systems', [SystemController::class, 'store'])->name('systems.store');
+            Route::patch('systems/ciian', [SystemController::class, 'updateCiianConfig'])
+                ->name('systems.ciian.update');
         });
 
         Route::middleware('permission:tables.manage')->group(function () {
