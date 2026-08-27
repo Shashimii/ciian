@@ -1006,8 +1006,8 @@ export default function TableForm({
                                                 </Label>
                                                 <Select
                                                     value={
-                                                        selectedColumn.references ??
-                                                        ''
+                                                        selectedColumn.references ||
+                                                        undefined
                                                     }
                                                     onValueChange={(value) =>
                                                         updateColumn(
@@ -1026,6 +1026,22 @@ export default function TableForm({
                                                         <SelectValue placeholder="Select References" />
                                                     </SelectTrigger>
                                                     <SelectContent>
+                                                        {selectedColumn.references &&
+                                                            !relationTables.some(
+                                                                (relation) =>
+                                                                    relation.value ===
+                                                                    selectedColumn.references,
+                                                            ) && (
+                                                                <SelectItem
+                                                                    value={
+                                                                        selectedColumn.references
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        selectedColumn.references
+                                                                    }
+                                                                </SelectItem>
+                                                            )}
                                                         {relationTables.map(
                                                             (relation) => (
                                                                 <SelectItem
