@@ -78,6 +78,20 @@ class TableIndexPresenter
     /**
      * @return array<string, mixed>
      */
+    public function present(InternalTable|SystemTable $table): array
+    {
+        if ($table instanceof SystemTable) {
+            $table->loadMissing('system');
+
+            return $this->presentSystem($table);
+        }
+
+        return $this->presentInternal($table);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function presentInternal(InternalTable $table): array
     {
         $ciianSlug = CiianConfig::query()->value('sys_slug') ?? InternalTable::TAG_CIIAN;

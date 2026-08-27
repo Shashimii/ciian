@@ -1,43 +1,36 @@
 import {
     Head,
+    Link,
     resetLayoutProps,
+    router,
     setLayoutProps,
 } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 import DataTable, { type DataTableColumn } from '@/components/data-table';
-import TableFormSidebar from '@/components/table-form-sidebar';
 import TagBadge from '@/components/tag-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { resolveLucideIcon } from '@/lib/lucide-icons';
-import { index as tablesIndex } from '@/routes/tables';
-import type { SystemOption, TableRow } from '@/types';
-import { Plus } from 'lucide-react';
+import { create, index as tablesIndex } from '@/routes/tables';
+import { edit as editInternal } from '@/routes/tables/internal';
+import { edit as editSystem } from '@/routes/tables/system';
+import type { TableRow } from '@/types';
 
 type Props = {
     tables: TableRow[];
-    systems: SystemOption[];
-    columnTypes: Record<string, string>;
 };
 
-export default function TableIndex({ tables, systems, columnTypes }: Props) {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [sidebarMode, setSidebarMode] = useState<'create' | 'edit'>('create');
-    const [activeTable, setActiveTable] = useState<TableRow | null>(null);
-
+export default function TableIndex({ tables }: Props) {
     useEffect(() => {
         setLayoutProps({
             headerActions: (
-                <Button
-                    onClick={() => {
-                        setSidebarMode('create');
-                        setActiveTable(null);
-                        setSidebarOpen(true);
-                    }}
-                >
-                    <Plus className="size-4" />
-                    New table
+                <Button asChild>
+                    <Link href={create()}>
+                        <Plus className="size-4" />
+                        New table
+                    </Link>
                 </Button>
             ),
         });
@@ -58,7 +51,10 @@ export default function TableIndex({ tables, systems, columnTypes }: Props) {
                     return (
                         <div className="flex items-center gap-2 font-medium">
                             {RowIcon && (
-                                <Icon iconNode={RowIcon} className="size-4 text-muted-foreground" />
+                                <Icon
+                                    iconNode={RowIcon}
+                                    className="size-4 text-muted-foreground"
+                                />
                             )}
                             {row.name}
                         </div>
@@ -97,9 +93,11 @@ export default function TableIndex({ tables, systems, columnTypes }: Props) {
     );
 
     const openEdit = (table: TableRow) => {
-        setSidebarMode('edit');
-        setActiveTable(table);
-        setSidebarOpen(true);
+        router.visit(
+            table.store === 'internal'
+                ? editInternal(table.id)
+                : editSystem(table.id),
+        );
     };
 
     return (
@@ -115,15 +113,6 @@ export default function TableIndex({ tables, systems, columnTypes }: Props) {
                     onRowClick={openEdit}
                 />
             </div>
-
-            <TableFormSidebar
-                open={sidebarOpen}
-                onOpenChange={setSidebarOpen}
-                mode={sidebarMode}
-                table={activeTable}
-                systems={systems}
-                columnTypes={columnTypes}
-            />
         </>
     );
 }

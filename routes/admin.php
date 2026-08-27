@@ -19,9 +19,16 @@ Route::prefix('admin')->group(function () {
 
         Route::middleware('permission:tables.manage')->group(function () {
             Route::get('tables', [TableController::class, 'index'])->name('tables.index');
+            Route::get('tables/create', [TableController::class, 'create'])->name('tables.create');
             Route::post('tables', [TableController::class, 'store'])->name('tables.store');
+
+            Route::get('tables/internal/{internalTable}', [TableController::class, 'editInternal'])
+                ->name('tables.internal.edit');
             Route::patch('tables/internal/{internalTable}', [TableController::class, 'updateInternal'])
                 ->name('tables.internal.update');
+
+            Route::get('tables/system/{systemTable}', [TableController::class, 'editSystem'])
+                ->name('tables.system.edit');
             Route::patch('tables/system/{systemTable}', [TableController::class, 'updateSystem'])
                 ->name('tables.system.update');
         });

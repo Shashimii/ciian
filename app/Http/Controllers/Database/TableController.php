@@ -22,6 +22,15 @@ class TableController extends Controller
     {
         return Inertia::render('table/index', [
             'tables' => $presenter->tables(),
+        ]);
+    }
+
+    /**
+     * Show the create table form.
+     */
+    public function create(TableIndexPresenter $presenter): Response
+    {
+        return Inertia::render('table/create', [
             'systems' => $presenter->systemOptions(),
             'columnTypes' => $presenter->columnTypeLabels(),
         ]);
@@ -32,14 +41,42 @@ class TableController extends Controller
      */
     public function store(StoreTableRequest $request, SaveTableDraft $saveTableDraft): RedirectResponse
     {
-        $saveTableDraft->create($request->validated());
+        $table = $saveTableDraft->create($request->validated());
 
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('Table draft saved.'),
         ]);
 
-        return back();
+        if ($table instanceof InternalTable) {
+            return to_route('tables.internal.edit', $table);
+        }
+
+        return to_route('tables.system.edit', $table);
+    }
+
+    /**
+     * Show the edit form for an internal table draft.
+     */
+    public function editInternal(InternalTable $internalTable, TableIndexPresenter $presenter): Response
+    {
+        return Inertia::render('table/update', [
+            'table' => $presenter->present($internalTable),
+            'systems' => $presenter->systemOptions(),
+            'columnTypes' => $presenter->columnTypeLabels(),
+        ]);
+    }
+
+    /**
+     * Show the edit form for a system-owned table draft.
+     */
+    public function editSystem(SystemTable $systemTable, TableIndexPresenter $presenter): Response
+    {
+        return Inertia::render('table/update', [
+            'table' => $presenter->present($systemTable),
+            'systems' => $presenter->systemOptions(),
+            'columnTypes' => $presenter->columnTypeLabels(),
+        ]);
     }
 
     /**
@@ -57,7 +94,7 @@ class TableController extends Controller
             'message' => __('Table draft updated.'),
         ]);
 
-        return back();
+        return to_route('tables.internal.edit', $internalTable);
     }
 
     /**
@@ -75,6 +112,6 @@ class TableController extends Controller
             'message' => __('Table draft updated.'),
         ]);
 
-        return back();
+        return to_route('tables.system.edit', $systemTable);
     }
 }
