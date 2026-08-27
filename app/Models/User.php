@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Ciian\Permission;
 use App\Models\Ciian\Role;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -58,5 +59,27 @@ class User extends Authenticatable implements PasskeyUser
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * Whether this user's role includes the given permission slug.
+     *
+     * The `root` permission grants every permission.
+     */
+    public function hasPermission(string $slug): bool
+    {
+        $this->loadMissing('role.permissions');
+
+        $permissions = $this->role?->permissions;
+
+        if ($permissions === null) {
+            return false;
+        }
+
+        if ($permissions->contains(fn (Permission $permission): bool => $permission->isRoot())) {
+            return true;
+        }
+
+        return $permissions->contains('slug', $slug);
     }
 }

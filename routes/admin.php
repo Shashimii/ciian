@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Database\TableController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,5 +16,13 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('admin')->group(function () {
     Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+        Route::middleware('permission:tables.manage')->group(function () {
+            Route::post('tables', [TableController::class, 'store'])->name('tables.store');
+            Route::patch('tables/internal/{internalTable}', [TableController::class, 'updateInternal'])
+                ->name('tables.internal.update');
+            Route::patch('tables/system/{systemTable}', [TableController::class, 'updateSystem'])
+                ->name('tables.system.update');
+        });
     });
 });
