@@ -1,12 +1,12 @@
 import {
     closestCenter,
     DndContext,
-    type DragEndEvent,
     KeyboardSensor,
     PointerSensor,
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
 import {
     arrayMove,
     SortableContext,
@@ -326,6 +326,7 @@ export default function TableForm({
     useEffect(() => {
         if (syncingFromEditor.current) {
             syncingFromEditor.current = false;
+
             return;
         }
 
@@ -428,6 +429,7 @@ export default function TableForm({
 
             if (!next) {
                 setJsonError('Shape must include a non-empty columns array.');
+
                 return;
             }
 
@@ -467,11 +469,14 @@ export default function TableForm({
             const route =
                 table.store === 'internal' ? updateInternal : updateSystem;
 
-            form.transform(() => payload).patch(route.url(table.id));
+            form.transform(() => payload);
+            form.patch(route.url(table.id));
+
             return;
         }
 
-        form.transform(() => payload).post(store.url());
+        form.transform(() => payload);
+        form.post(store.url());
     };
 
     useEffect(() => {
@@ -513,52 +518,50 @@ export default function TableForm({
             }}
         >
             <div className="rounded-xl border bg-card p-4 shadow-sm">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-                    <div className="flex items-end gap-3">
-                        {showIconEditor ? (
-                            <Tooltip
-                                open={iconTooltipOpen}
-                                onOpenChange={setIconTooltipOpen}
-                            >
-                                <TooltipTrigger asChild>
-                                    <button
-                                        type="button"
-                                        className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 transition-colors hover:border-primary/40 hover:bg-muted"
-                                        aria-label="Change icon"
-                                        onPointerEnter={() =>
-                                            setIconTooltipOpen(true)
-                                        }
-                                        onPointerLeave={() =>
-                                            setIconTooltipOpen(false)
-                                        }
-                                        onClick={() =>
-                                            setShowIconPicker(
-                                                (current) => !current,
-                                            )
-                                        }
-                                    >
-                                        {selectedIcon && (
-                                            <Icon
-                                                iconNode={selectedIcon}
-                                                className="size-7"
-                                            />
-                                        )}
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent>Change icon</TooltipContent>
-                            </Tooltip>
-                        ) : (
-                            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40">
-                                {selectedIcon && (
-                                    <Icon
-                                        iconNode={selectedIcon}
-                                        className="size-7"
-                                    />
-                                )}
-                            </div>
-                        )}
+                <div className="flex items-start gap-4">
+                    {showIconEditor ? (
+                        <Tooltip
+                            open={iconTooltipOpen}
+                            onOpenChange={setIconTooltipOpen}
+                        >
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="flex size-16 shrink-0 items-center justify-center self-stretch rounded-xl border bg-muted/40 transition-colors hover:border-primary/40 hover:bg-muted"
+                                    aria-label="Change icon"
+                                    onPointerEnter={() =>
+                                        setIconTooltipOpen(true)
+                                    }
+                                    onPointerLeave={() =>
+                                        setIconTooltipOpen(false)
+                                    }
+                                    onClick={() =>
+                                        setShowIconPicker((current) => !current)
+                                    }
+                                >
+                                    {selectedIcon && (
+                                        <Icon
+                                            iconNode={selectedIcon}
+                                            className="size-8"
+                                        />
+                                    )}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Change icon</TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <div className="flex size-16 shrink-0 items-center justify-center self-stretch rounded-xl border bg-muted/40">
+                            {selectedIcon && (
+                                <Icon
+                                    iconNode={selectedIcon}
+                                    className="size-8"
+                                />
+                            )}
+                        </div>
+                    )}
 
-                        <div className="min-w-[12rem] flex-1 space-y-2">
+                    <div className="min-w-0 flex-1 space-y-4">
+                        <div className="space-y-2">
                             <Label htmlFor="table-name">Table Name</Label>
                             <Input
                                 id="table-name"
@@ -571,55 +574,67 @@ export default function TableForm({
                             />
                             <InputError message={form.errors.name} />
                         </div>
-                    </div>
 
-                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="table-slug">Table Name Slug</Label>
-                            <Input
-                                id="table-slug"
-                                data-field="slug"
-                                value={form.data.slug}
-                                readOnly
-                                disabled
-                            />
-                            <InputError message={form.errors.slug} />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="table-system">Table System</Label>
-                            {isEdit ? (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="table-slug">
+                                    Table Name Slug
+                                </Label>
                                 <Input
-                                    id="table-system"
-                                    value={systemLabel}
+                                    id="table-slug"
+                                    data-field="slug"
+                                    value={form.data.slug}
+                                    readOnly
                                     disabled
                                 />
-                            ) : (
-                                <>
-                                    <Select
-                                        value={form.data.system}
-                                        onValueChange={(value) => {
-                                            form.setData('system', value);
-                                            clearFieldErrors(form, 'system');
-                                        }}
-                                    >
-                                        <SelectTrigger id="table-system">
-                                            <SelectValue placeholder="Select a system" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {systems.map((system) => (
-                                                <SelectItem
-                                                    key={system.value}
-                                                    value={system.value}
-                                                >
-                                                    {system.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <InputError message={form.errors.system} />
-                                </>
-                            )}
+                                <InputError message={form.errors.slug} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="table-system">
+                                    Table System
+                                </Label>
+                                {isEdit ? (
+                                    <Input
+                                        id="table-system"
+                                        value={systemLabel}
+                                        disabled
+                                    />
+                                ) : (
+                                    <>
+                                        <Select
+                                            value={form.data.system}
+                                            onValueChange={(value) => {
+                                                form.setData('system', value);
+                                                clearFieldErrors(
+                                                    form,
+                                                    'system',
+                                                );
+                                            }}
+                                        >
+                                            <SelectTrigger
+                                                id="table-system"
+                                                className="w-full"
+                                            >
+                                                <SelectValue placeholder="Select a system" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {systems.map((system) => (
+                                                    <SelectItem
+                                                        key={system.value}
+                                                        value={system.value}
+                                                    >
+                                                        {system.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <InputError
+                                            message={form.errors.system}
+                                        />
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -656,8 +671,8 @@ export default function TableForm({
                 )}
             </div>
 
-            <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-12">
-                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm xl:col-span-3">
+            <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-3">
+                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm">
                     <div className="border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">Table Columns</h2>
                     </div>
@@ -706,10 +721,23 @@ export default function TableForm({
                                 </div>
                             </SortableContext>
                         </DndContext>
+
+                        <div className="mt-auto flex items-center gap-2 border-t pt-4">
+                            <Checkbox
+                                id="table-timestamps"
+                                checked={timestamps}
+                                onCheckedChange={(checked) =>
+                                    setTimestamps(checked === true)
+                                }
+                            />
+                            <Label htmlFor="table-timestamps">
+                                Include created_at and updated_at
+                            </Label>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm xl:col-span-4">
+                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm">
                     <div className="border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">
                             Table Column Properties
@@ -1066,24 +1094,11 @@ export default function TableForm({
                             </div>
                         )}
 
-                        <div className="mt-auto flex items-center gap-2 border-t pt-4">
-                            <Checkbox
-                                id="table-timestamps"
-                                checked={timestamps}
-                                onCheckedChange={(checked) =>
-                                    setTimestamps(checked === true)
-                                }
-                            />
-                            <Label htmlFor="table-timestamps">
-                                Include created_at and updated_at
-                            </Label>
-                        </div>
-
                         <InputError message={form.errors.shape} />
                     </div>
                 </div>
 
-                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm xl:col-span-5">
+                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm">
                     <div className="border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">Shape (JSON)</h2>
                     </div>
