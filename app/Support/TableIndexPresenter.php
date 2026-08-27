@@ -73,7 +73,7 @@ class TableIndexPresenter
     }
 
     /**
-     * Published tables available as foreign-key targets.
+     * Published tables available as foreign-key targets (`table.column`).
      *
      * @return list<array{label: string, value: string}>
      */
@@ -86,14 +86,13 @@ class TableIndexPresenter
             ->orderBy('name')
             ->get()
             ->map(function (InternalTable $table) use ($shapes) {
-                $physical = is_array($table->pub_shape)
-                    ? $shapes->physicalTableName($table->pub_shape)
-                    : $table->slug;
+                $shape = is_array($table->pub_shape) ? $table->pub_shape : [];
 
-                return [
-                    'label' => $table->name,
-                    'value' => $physical !== '' ? $physical : $table->slug,
-                ];
+                return $this->relationOption(
+                    label: $table->name,
+                    physical: $shapes->physicalTableName($shape) ?: $table->slug,
+                    shape: $shape,
+                );
             });
 
         $system = SystemTable::query()
@@ -101,22 +100,75 @@ class TableIndexPresenter
             ->orderBy('name')
             ->get()
             ->map(function (SystemTable $table) use ($shapes) {
-                $physical = is_array($table->pub_shape)
-                    ? $shapes->physicalTableName($table->pub_shape)
-                    : $table->slug;
+                $shape = is_array($table->pub_shape) ? $table->pub_shape : [];
 
-                return [
-                    'label' => $table->name,
-                    'value' => $physical !== '' ? $physical : $table->slug,
-                ];
+                return $this->relationOption(
+                    label: $table->name,
+                    physical: $shapes->physicalTableName($shape) ?: $table->slug,
+                    shape: $shape,
+                );
             });
 
         return $internal
             ->concat($system)
+            ->filter()
             ->unique('value')
             ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $shape
+     * @return array{label: string, value: string}|null
+     */
+    private function relationOption(string $label, string $physical, array $shape): ?array
+    {
+        if ($physical === '') {
+            return null;
+        }
+
+        $column = $this->primaryKeyColumn($shape);
+
+        if ($column === null) {
+            return null;
+        }
+
+        $value = "{$physical}.{$column}";
+
+        return [
+            'label' => "{$label} ({$value})",
+            'value' => $value,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $shape
+     */
+    private function primaryKeyColumn(array $shape): ?string
+    {
+        $columns = $shape['columns'] ?? [];
+
+        if (is_array($columns)) {
+            foreach ($columns as $column) {
+                if (($column['name'] ?? null) === 'id') {
+                    return 'id';
+                }
+            }
+        }
+
+        $primary = $shape['primary'] ?? null;
+
+        if (is_array($primary) && count($primary) === 1 && is_string($primary[0])) {
+            return $primary[0];
+        }
+
+        // Composite primary without id (e.g. permission_role) is not a simple FK target.
+        if (is_array($primary) && count($primary) > 1) {
+            return null;
+        }
+
+        return 'id';
     }
 
     /**

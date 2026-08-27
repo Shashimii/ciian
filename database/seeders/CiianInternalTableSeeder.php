@@ -5,6 +5,18 @@ namespace Database\Seeders;
 use App\Models\Ciian\Database\InternalTable;
 use Illuminate\Database\Seeder;
 
+/**
+ * Seeds platform Accounts table shapes into ciian_int_tbl.
+ *
+ * Shapes must mirror the physical migrations:
+ * - database/migrations/0001_01_01_000000_create_users_table.php
+ * - database/migrations/2025_08_14_170933_add_two_factor_columns_to_users_table.php
+ * - database/migrations/2026_08_26_080739_create_roles_table.php
+ * - database/migrations/2026_08_26_080740_create_permissions_table.php
+ * - database/migrations/2026_08_26_080741_create_permission_role_table.php
+ *
+ * Foreign keys always use references as `table.column` (e.g. roles.id).
+ */
 class CiianInternalTableSeeder extends Seeder
 {
     /**
@@ -34,6 +46,10 @@ class CiianInternalTableSeeder extends Seeder
     }
 
     /**
+     * @see database/migrations/0001_01_01_000000_create_users_table.php
+     * @see database/migrations/2025_08_14_170933_add_two_factor_columns_to_users_table.php
+     * @see database/migrations/2026_08_26_080739_create_roles_table.php (role_id FK)
+     *
      * @return array<string, mixed>
      */
     private function usersTable(): array
@@ -65,6 +81,7 @@ class CiianInternalTableSeeder extends Seeder
                     'name' => 'role_id',
                     'type' => 'foreignId',
                     'nullable' => false,
+                    'indexed' => true,
                     'references' => 'roles.id',
                     'on_delete' => 'restrict',
                 ],
@@ -111,6 +128,8 @@ class CiianInternalTableSeeder extends Seeder
     }
 
     /**
+     * @see database/migrations/2026_08_26_080739_create_roles_table.php
+     *
      * @return array<string, mixed>
      */
     private function rolesTable(): array
@@ -154,6 +173,7 @@ class CiianInternalTableSeeder extends Seeder
                     'type' => 'boolean',
                     'nullable' => false,
                     'default' => false,
+                    'indexed' => true,
                 ],
             ],
             'timestamps' => true,
@@ -168,6 +188,8 @@ class CiianInternalTableSeeder extends Seeder
     }
 
     /**
+     * @see database/migrations/2026_08_26_080740_create_permissions_table.php
+     *
      * @return array<string, mixed>
      */
     private function permissionsTable(): array
@@ -213,6 +235,8 @@ class CiianInternalTableSeeder extends Seeder
     }
 
     /**
+     * @see database/migrations/2026_08_26_080741_create_permission_role_table.php
+     *
      * @return array<string, mixed>
      */
     private function permissionRoleTable(): array
