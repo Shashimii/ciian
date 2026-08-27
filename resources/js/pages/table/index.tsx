@@ -85,7 +85,7 @@ export default function TableIndex({ tables }: Props) {
                             row.status === 'published' ? 'default' : 'secondary'
                         }
                     >
-                        {row.status === 'published' ? 'Published' : 'Draft'}
+                        {row.status === 'published' ? 'Published' : 'Unpublished'}
                     </Badge>
                 ),
             },
