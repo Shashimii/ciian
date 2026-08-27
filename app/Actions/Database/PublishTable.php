@@ -17,6 +17,7 @@ class PublishTable
     public function __construct(
         private TableShapeBuilder $shapes,
         private ApplyTableSchema $schema,
+        private GenerateEloquentModel $generateModel,
     ) {}
 
     /**
@@ -62,6 +63,8 @@ class PublishTable
                 $this->schema->create($normalized);
                 $created = true;
             }
+
+            $this->generateModel->handle($table, $normalized);
 
             $table->unpub_shape = $normalized;
             $table->pub_shape = $normalized;

@@ -18,6 +18,8 @@ Related code:
 - `App\Models\Ciian\System\*` — `System`, `SystemTable` (created-system tables)
 - `App\Support\TableShapeBuilder` — builds and normalizes shapes
 - `App\Support\ColumnTypes` — allowed column types and which options each type supports
+- `App\Actions\Database\GenerateEloquentModel` — writes / merges Eloquent models on publish under `app/Models/Systems/` (gitignored)
+- `App\Support\EloquentModelPath` — resolves model namespace/path for Ciian vs created systems
 
 ---
 
