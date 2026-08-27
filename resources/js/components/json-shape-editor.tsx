@@ -1,4 +1,5 @@
-import Editor, { type OnChange, type OnMount } from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
+import type { OnChange, OnMount } from '@monaco-editor/react';
 import { useAppearance } from '@/hooks/use-appearance';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +33,7 @@ export default function JsonShapeEditor({
     return (
         <div
             className={cn(
-                'min-h-0 flex-1 overflow-hidden rounded-lg border',
+                'min-h-0 flex-1 overflow-hidden',
                 className,
             )}
         >
