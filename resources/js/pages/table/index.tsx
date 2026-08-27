@@ -7,7 +7,8 @@ import {
 } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
-import DataTable, { type DataTableColumn } from '@/components/data-table';
+import DataTable from '@/components/data-table';
+import type { DataTableColumn } from '@/components/data-table';
 import TagBadge from '@/components/tag-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
