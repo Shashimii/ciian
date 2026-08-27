@@ -1,6 +1,7 @@
 import {
     Head,
     resetLayoutProps,
+    router,
     setLayoutProps,
     useForm,
 } from '@inertiajs/react';
@@ -203,6 +204,7 @@ export default function SystemIndex({
 
         createForm.post(store.url(), {
             preserveScroll: true,
+            invalidateCacheTags: ['systems', 'tables'],
             onSuccess: () => closeCreate(false),
         });
     };
@@ -212,7 +214,12 @@ export default function SystemIndex({
 
         ciianForm.patch(updateCiian.url(), {
             preserveScroll: true,
-            onSuccess: () => closeCiian(false),
+            invalidateCacheTags: ['systems', 'tables'],
+            onSuccess: () => {
+                // Drop any untagged prefetched pages (e.g. Tables) so badge icon/color refresh.
+                router.flushAll();
+                closeCiian(false);
+            },
         });
     };
 
