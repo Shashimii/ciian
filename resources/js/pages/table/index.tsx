@@ -15,8 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { resolveLucideIcon } from '@/lib/lucide-icons';
 import { create, index as tablesIndex } from '@/routes/tables';
-import { edit as editInternal } from '@/routes/tables/internal';
-import { edit as editSystem } from '@/routes/tables/system';
+import { edit as editInternal, publish as publishInternal } from '@/routes/tables/internal';
+import { edit as editSystem, publish as publishSystem } from '@/routes/tables/system';
 import type { TableRow } from '@/types';
 
 type Props = {
@@ -101,6 +101,16 @@ export default function TableIndex({ tables }: Props) {
         );
     };
 
+    const publishTable = (table: TableRow) => {
+        router.post(
+            table.store === 'internal'
+                ? publishInternal.url(table.id)
+                : publishSystem.url(table.id),
+            {},
+            { preserveScroll: true },
+        );
+    };
+
     return (
         <>
             <Head title="Tables" />
@@ -112,6 +122,9 @@ export default function TableIndex({ tables }: Props) {
                     getRowKey={(row) => row.key}
                     emptyMessage="No tables yet. Create one to get started."
                     onRowClick={openEdit}
+                    onPublish={publishTable}
+                    canPublish={(row) => row.can_publish}
+                    isSync={(row) => row.is_sync}
                 />
             </div>
         </>

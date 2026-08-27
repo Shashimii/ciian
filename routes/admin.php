@@ -26,11 +26,15 @@ Route::prefix('admin')->group(function () {
                 ->name('tables.internal.edit');
             Route::patch('tables/internal/{internalTable}', [TableController::class, 'updateInternal'])
                 ->name('tables.internal.update');
+            Route::post('tables/internal/{internalTable}/publish', [TableController::class, 'publishInternal'])
+                ->name('tables.internal.publish');
 
             Route::get('tables/system/{systemTable}', [TableController::class, 'editSystem'])
                 ->name('tables.system.edit');
             Route::patch('tables/system/{systemTable}', [TableController::class, 'updateSystem'])
                 ->name('tables.system.update');
+            Route::post('tables/system/{systemTable}/publish', [TableController::class, 'publishSystem'])
+                ->name('tables.system.publish');
         });
     });
 });

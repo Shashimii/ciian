@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Database;
 
+use App\Actions\Database\PublishTable;
 use App\Actions\Database\SaveTableDraft;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Database\StoreTableRequest;
@@ -112,5 +113,47 @@ class TableController extends Controller
         ]);
 
         return to_route('tables.index');
+    }
+
+    /**
+     * Publish or sync an internal table draft to a physical table.
+     */
+    public function publishInternal(
+        InternalTable $internalTable,
+        PublishTable $publishTable,
+    ): RedirectResponse {
+        $wasSync = $internalTable->isPublished() && $internalTable->hasPendingChanges();
+
+        $publishTable->handle($internalTable);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $wasSync
+                ? __('Table synced.')
+                : __('Table published.'),
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Publish or sync a system-owned table draft to a physical table.
+     */
+    public function publishSystem(
+        SystemTable $systemTable,
+        PublishTable $publishTable,
+    ): RedirectResponse {
+        $wasSync = $systemTable->isPublished() && $systemTable->hasPendingChanges();
+
+        $publishTable->handle($systemTable);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $wasSync
+                ? __('Table synced.')
+                : __('Table published.'),
+        ]);
+
+        return back();
     }
 }
