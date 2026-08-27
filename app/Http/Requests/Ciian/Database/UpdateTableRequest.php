@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Database;
+namespace App\Http\Requests\Ciian\Database;
 
 use App\Http\Requests\Concerns\ValidatesTableColumns;
 use Illuminate\Contracts\Validation\ValidationRule;

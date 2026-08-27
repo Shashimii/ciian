@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\System;
+namespace App\Http\Requests\Ciian\System;
 
 use App\Models\Ciian\Core\CiianConfig;
 use App\Support\TagColors;

@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Http\Controllers\System;
+namespace App\Http\Controllers\Ciian\System;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\System\StoreSystemRequest;
-use App\Http\Requests\System\UpdateCiianConfigRequest;
+use App\Http\Requests\Ciian\System\StoreSystemRequest;
+use App\Http\Requests\Ciian\System\UpdateCiianConfigRequest;
 use App\Models\Ciian\Core\CiianConfig;
 use App\Models\Ciian\Database\InternalTable;
 use App\Models\Ciian\System\System as CreatedSystem;

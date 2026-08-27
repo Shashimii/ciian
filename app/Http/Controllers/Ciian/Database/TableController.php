@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Database;
+namespace App\Http\Controllers\Ciian\Database;
 
 use App\Actions\Database\PublishTable;
 use App\Actions\Database\SaveTableDraft;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Database\StoreTableRequest;
-use App\Http\Requests\Database\UpdateTableRequest;
+use App\Http\Requests\Ciian\Database\StoreTableRequest;
+use App\Http\Requests\Ciian\Database\UpdateTableRequest;
 use App\Models\Ciian\Database\InternalTable;
 use App\Models\Ciian\System\SystemTable;
 use App\Support\TableIndexPresenter;

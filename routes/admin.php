@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Database\TableController;
-use App\Http\Controllers\System\SystemController;
+use App\Http\Controllers\Ciian\Database\TableController;
+use App\Http\Controllers\Ciian\System\SystemController;
 use Illuminate\Support\Facades\Route;
 
 /*

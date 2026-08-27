@@ -40,16 +40,34 @@ database/factories/Ciian/Component/...
 database/factories/Ciian/UserFactory.php
 ```
 
-Per-system **generated** models (from publish) use the system name as the folder — not under `Ciian/Core`, `Ciian/Database`, or `Ciian/System`:
+**Generated** models (from publish) live under `app/Models/Systems/` and are **gitignored** — not committed:
 
 ```text
-app/Models/Inventory/...
-app/Models/Payroll/...
-app/Models/Ciian/...   # published Ciian-tag physical tables (generated)
-app/Models/NoSystem/...
+app/Models/Systems/{SystemStudly}/...   # created-system tables (e.g. PayrollSystem/RolesA.php)
+app/Models/Systems/Ciian/...            # Ciian-tag tables created via Tables UI
 ```
 
+Hand-written platform models stay tracked (`App\Models\User`, `App\Models\Ciian\Role`, etc.).
+
 Do **not** put platform models back in `App\Models\` root.
+
+## Controller & form request directories
+
+Platform admin controllers and form requests mirror model concerns under `Ciian/`:
+
+- **`Ciian/Database`** — Tables / Database Engine.
+- **`Ciian/System`** — Systems / platform config.
+- **`Settings/`** — user account settings (not under Ciian).
+
+```text
+app/Http/Controllers/Ciian/Database/TableController.php
+app/Http/Controllers/Ciian/System/SystemController.php
+app/Http/Controllers/Settings/...
+
+app/Http/Requests/Ciian/Database/...
+app/Http/Requests/Ciian/System/...
+app/Http/Requests/Settings/...
+```
 
 ## Internal vs system table shapes
 
@@ -59,7 +77,7 @@ Do **not** put platform models back in `App\Models\` root.
 - Tables list also includes `ciian_sys_tbl` rows; those badges use the parent **system** icon, not `ciian_int_tbl.icon`.
 - Do **not** store created-system tables in `ciian_int_tbl`; do **not** store Ciian-tagged tables in `ciian_sys_tbl`.
 - Both table stores use `status`, `unpub_shape`, and `pub_shape`. Physical Laravel platform tables stay migration-backed; `unpub_shape` updates are metadata until publish copies them to `pub_shape` and the Database Engine applies DDL.
-- On publish, Ciian creates the physical table (including FK constraints) and generates an Eloquent model under `App\Models\{System|Ciian}\` with `belongsTo` / inbound `hasMany` from foreign key columns.
+- On publish, Ciian creates the physical table (including FK constraints) and generates an Eloquent model under `App\Models\Systems\{System|Ciian}\` with `belongsTo` / inbound `hasMany` from foreign key columns.
 
 ## Middleware naming
 

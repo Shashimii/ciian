@@ -29,7 +29,7 @@ import {
     store,
     updateInternal,
     updateSystem,
-} from '@/actions/App/Http/Controllers/Database/TableController';
+} from '@/actions/App/Http/Controllers/Ciian/Database/TableController';
 import InputError from '@/components/input-error';
 import JsonShapeEditor from '@/components/json-shape-editor';
 import { Button } from '@/components/ui/button';
