@@ -22,7 +22,7 @@ export default function TableUpdate({
         <>
             <Head title={`Edit ${table.name}`} />
 
-            <div className="flex h-[calc(100svh-4rem)] flex-col overflow-hidden px-4 py-6">
+            <div className="flex h-[calc(100svh-5rem)] flex-col overflow-hidden px-4 py-6">
                 <TableForm
                     mode="edit"
                     table={table}
