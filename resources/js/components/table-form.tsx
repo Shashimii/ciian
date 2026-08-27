@@ -1122,7 +1122,7 @@ export default function TableForm({
                     <div className="border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">Shape (JSON)</h2>
                     </div>
-                    <div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
+                    <div className="flex min-h-0 flex-1 flex-col">
                         <JsonShapeEditor
                             value={jsonText}
                             onChange={handleJsonChange}
@@ -1130,7 +1130,7 @@ export default function TableForm({
                             className="min-h-[24rem] flex-1"
                         />
                         {jsonError && (
-                            <p className="text-sm text-destructive">
+                            <p className="px-4 py-2 text-sm text-destructive">
                                 {jsonError}
                             </p>
                         )}
