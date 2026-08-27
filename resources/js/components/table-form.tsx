@@ -668,33 +668,38 @@ export default function TableForm({
                             const IconComponent = resolveLucideIcon(iconName);
 
                             return (
-                                <button
-                                    key={iconName}
-                                    type="button"
-                                    className={cn(
-                                        'flex h-10 items-center justify-center rounded-md border',
-                                        form.data.icon === iconName &&
-                                            'border-primary bg-primary/10 text-primary',
-                                    )}
-                                    onClick={() => {
-                                        form.setData('icon', iconName);
-                                        setShowIconPicker(false);
-                                    }}
-                                >
-                                    {IconComponent && (
-                                        <Icon
-                                            iconNode={IconComponent}
-                                            className="size-4"
-                                        />
-                                    )}
-                                </button>
+                                <Tooltip key={iconName}>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            type="button"
+                                            aria-label={iconName}
+                                            className={cn(
+                                                'flex h-10 items-center justify-center rounded-md border',
+                                                form.data.icon === iconName &&
+                                                    'border-primary bg-primary/10 text-primary',
+                                            )}
+                                            onClick={() => {
+                                                form.setData('icon', iconName);
+                                                setShowIconPicker(false);
+                                            }}
+                                        >
+                                            {IconComponent && (
+                                                <Icon
+                                                    iconNode={IconComponent}
+                                                    className="size-4"
+                                                />
+                                            )}
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{iconName}</TooltipContent>
+                                </Tooltip>
                             );
                         })}
                     </div>
                 )}
             </div>
 
-            <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-3">
+            <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.5fr)]">
                 <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm">
                     <div className="border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">Table Columns</h2>
