@@ -2,16 +2,18 @@
 
 namespace App\Http\Requests\Database;
 
+use App\Http\Requests\Concerns\ValidatesTableColumns;
 use App\Models\Ciian\Core\CiianConfig;
 use App\Models\Ciian\Database\InternalTable;
 use App\Models\Ciian\System\System;
-use App\Support\ColumnTypes;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class StoreTableRequest extends FormRequest
 {
+    use ValidatesTableColumns;
+
     public function authorize(): bool
     {
         return $this->user()?->hasPermission('tables.manage') ?? false;
@@ -43,13 +45,7 @@ class StoreTableRequest extends FormRequest
                 },
             ],
             'icon' => ['nullable', 'string', 'max:255'],
-            'shape' => ['required', 'array'],
-            'shape.columns' => ['nullable', 'array'],
-            'shape.columns.*.name' => ['required_with:shape.columns', 'string', 'max:255'],
-            'shape.columns.*.type' => ['required_with:shape.columns', 'string', Rule::in(ColumnTypes::types())],
-            'shape.timestamps' => ['sometimes', 'boolean'],
-            'shape.primary' => ['sometimes', 'array'],
-            'shape.primary.*' => ['string'],
+            ...$this->tableShapeRules(),
         ];
     }
 

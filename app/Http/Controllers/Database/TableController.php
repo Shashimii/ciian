@@ -33,6 +33,7 @@ class TableController extends Controller
         return Inertia::render('table/create', [
             'systems' => $presenter->systemOptions(),
             'columnTypes' => $presenter->columnTypeLabels(),
+            'relationTables' => $presenter->relationTables(),
         ]);
     }
 
@@ -41,18 +42,14 @@ class TableController extends Controller
      */
     public function store(StoreTableRequest $request, SaveTableDraft $saveTableDraft): RedirectResponse
     {
-        $table = $saveTableDraft->create($request->validated());
+        $saveTableDraft->create($request->tablePayload());
 
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('Table draft saved.'),
         ]);
 
-        if ($table instanceof InternalTable) {
-            return to_route('tables.internal.edit', $table);
-        }
-
-        return to_route('tables.system.edit', $table);
+        return to_route('tables.index');
     }
 
     /**
@@ -64,6 +61,7 @@ class TableController extends Controller
             'table' => $presenter->present($internalTable),
             'systems' => $presenter->systemOptions(),
             'columnTypes' => $presenter->columnTypeLabels(),
+            'relationTables' => $presenter->relationTables(),
         ]);
     }
 
@@ -76,6 +74,7 @@ class TableController extends Controller
             'table' => $presenter->present($systemTable),
             'systems' => $presenter->systemOptions(),
             'columnTypes' => $presenter->columnTypeLabels(),
+            'relationTables' => $presenter->relationTables(),
         ]);
     }
 
@@ -87,14 +86,14 @@ class TableController extends Controller
         InternalTable $internalTable,
         SaveTableDraft $saveTableDraft,
     ): RedirectResponse {
-        $saveTableDraft->update($internalTable, $request->validated());
+        $saveTableDraft->update($internalTable, $request->tablePayload());
 
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('Table draft updated.'),
         ]);
 
-        return to_route('tables.internal.edit', $internalTable);
+        return to_route('tables.index');
     }
 
     /**
@@ -105,13 +104,13 @@ class TableController extends Controller
         SystemTable $systemTable,
         SaveTableDraft $saveTableDraft,
     ): RedirectResponse {
-        $saveTableDraft->update($systemTable, $request->validated());
+        $saveTableDraft->update($systemTable, $request->tablePayload());
 
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('Table draft updated.'),
         ]);
 
-        return to_route('tables.system.edit', $systemTable);
+        return to_route('tables.index');
     }
 }

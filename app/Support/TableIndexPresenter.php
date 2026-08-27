@@ -76,6 +76,53 @@ class TableIndexPresenter
     }
 
     /**
+     * Published tables available as foreign-key targets.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    public function relationTables(): array
+    {
+        $shapes = new TableShapeBuilder;
+
+        $internal = InternalTable::query()
+            ->where('status', InternalTable::STATUS_PUBLISHED)
+            ->orderBy('name')
+            ->get()
+            ->map(function (InternalTable $table) use ($shapes) {
+                $physical = is_array($table->pub_shape)
+                    ? $shapes->physicalTableName($table->pub_shape)
+                    : $table->slug;
+
+                return [
+                    'label' => $table->name,
+                    'value' => $physical !== '' ? $physical : $table->slug,
+                ];
+            });
+
+        $system = SystemTable::query()
+            ->where('status', SystemTable::STATUS_PUBLISHED)
+            ->orderBy('name')
+            ->get()
+            ->map(function (SystemTable $table) use ($shapes) {
+                $physical = is_array($table->pub_shape)
+                    ? $shapes->physicalTableName($table->pub_shape)
+                    : $table->slug;
+
+                return [
+                    'label' => $table->name,
+                    'value' => $physical !== '' ? $physical : $table->slug,
+                ];
+            });
+
+        return $internal
+            ->concat($system)
+            ->unique('value')
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function present(InternalTable|SystemTable $table): array
