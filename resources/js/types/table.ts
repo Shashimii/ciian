@@ -54,4 +54,5 @@ export type SystemOption = {
     label: string;
     icon: string;
     internal: boolean;
+    color?: string | null;
 };

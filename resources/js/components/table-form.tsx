@@ -273,7 +273,7 @@ export default function TableForm({
         name: table?.name ?? '',
         slug: table?.slug ?? '',
         system: table?.system.slug ?? systems[0]?.value ?? '',
-        icon: table?.icon ?? 'Box',
+        icon: table?.icon ?? systems[0]?.icon ?? 'Sparkles',
         shape: {
             columns: table?.unpub_shape?.columns?.length
                 ? table.unpub_shape.columns
@@ -297,14 +297,16 @@ export default function TableForm({
     );
     const showIconEditor = isEdit
         ? table?.store === 'internal'
-        : false;
+        : (selectedSystem?.internal ?? false);
 
     const systemLabel = isEdit
         ? (table?.system.label ?? '')
         : (selectedSystem?.label ?? '');
 
     const selectedIcon = resolveLucideIcon(
-        showIconEditor ? form.data.icon : (table?.system.icon ?? selectedSystem?.icon ?? 'Sparkles'),
+        showIconEditor
+            ? form.data.icon
+            : (table?.system.icon ?? selectedSystem?.icon ?? 'Sparkles'),
     );
 
     const typeGroups = useMemo(
@@ -629,6 +631,16 @@ export default function TableForm({
                                             value={form.data.system}
                                             onValueChange={(value) => {
                                                 form.setData('system', value);
+                                                const next = systems.find(
+                                                    (system) =>
+                                                        system.value === value,
+                                                );
+                                                if (next) {
+                                                    form.setData(
+                                                        'icon',
+                                                        next.icon,
+                                                    );
+                                                }
                                                 clearFieldErrors(
                                                     form,
                                                     'system',
