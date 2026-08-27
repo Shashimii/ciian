@@ -1,6 +1,4 @@
-import { useHttp } from '@inertiajs/react';
-import { useCallback, useState } from 'react';
-import { qrCode, recoveryCodes, secretKey } from '@/routes/two-factor';
+import { useCallback, useMemo, useState } from 'react';
 
 export type UseTwoFactorAuthReturn = {
     qrCodeSvg: string | null;
@@ -8,91 +6,31 @@ export type UseTwoFactorAuthReturn = {
     recoveryCodesList: string[];
     hasSetupData: boolean;
     errors: string[];
-    clearErrors: () => void;
-    clearSetupData: () => void;
+    requestSetupData: () => void;
+    fetchRecoveryCodes: () => void;
     clearTwoFactorAuthData: () => void;
-    fetchQrCode: () => Promise<void>;
-    fetchSetupKey: () => Promise<void>;
-    fetchSetupData: () => Promise<void>;
-    fetchRecoveryCodes: () => Promise<void>;
 };
 
 export const OTP_MAX_LENGTH = 6;
 
+/**
+ * Stubbed while Fortify two-factor authentication is disabled.
+ * Avoids importing missing Wayfinder `@/routes/two-factor` helpers.
+ */
 export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
-    const { submit } = useHttp();
+    const [qrCodeSvg] = useState<string | null>(null);
+    const [manualSetupKey] = useState<string | null>(null);
+    const [recoveryCodesList] = useState<string[]>([]);
+    const [errors] = useState<string[]>([]);
 
-    const [qrCodeSvg, setQrCodeSvg] = useState<string | null>(null);
-    const [manualSetupKey, setManualSetupKey] = useState<string | null>(null);
-    const [recoveryCodesList, setRecoveryCodesList] = useState<string[]>([]);
-    const [errors, setErrors] = useState<string[]>([]);
+    const hasSetupData = useMemo(
+        () => qrCodeSvg !== null && manualSetupKey !== null,
+        [qrCodeSvg, manualSetupKey],
+    );
 
-    const hasSetupData = qrCodeSvg !== null && manualSetupKey !== null;
-
-    const clearErrors = useCallback((): void => {
-        setErrors([]);
-    }, []);
-
-    const clearSetupData = useCallback((): void => {
-        setManualSetupKey(null);
-        setQrCodeSvg(null);
-        setErrors([]);
-    }, []);
-
-    const clearTwoFactorAuthData = useCallback((): void => {
-        setManualSetupKey(null);
-        setQrCodeSvg(null);
-        setErrors([]);
-        setRecoveryCodesList([]);
-    }, []);
-
-    const fetchQrCode = useCallback(async (): Promise<void> => {
-        try {
-            const { svg } = (await submit(qrCode())) as {
-                svg: string;
-                url: string;
-            };
-
-            setQrCodeSvg(svg);
-        } catch {
-            setErrors((prev) => [...prev, 'Failed to fetch QR code']);
-            setQrCodeSvg(null);
-        }
-    }, [submit]);
-
-    const fetchSetupKey = useCallback(async (): Promise<void> => {
-        try {
-            const { secretKey: key } = (await submit(secretKey())) as {
-                secretKey: string;
-            };
-
-            setManualSetupKey(key);
-        } catch {
-            setErrors((prev) => [...prev, 'Failed to fetch a setup key']);
-            setManualSetupKey(null);
-        }
-    }, [submit]);
-
-    const fetchRecoveryCodes = useCallback(async (): Promise<void> => {
-        try {
-            setErrors([]);
-            const codes = (await submit(recoveryCodes())) as string[];
-            setRecoveryCodesList(codes);
-        } catch {
-            setErrors((prev) => [...prev, 'Failed to fetch recovery codes']);
-            setRecoveryCodesList([]);
-        }
-    }, [submit]);
-
-    const fetchSetupData = useCallback(async (): Promise<void> => {
-        try {
-            setErrors([]);
-            await Promise.all([fetchQrCode(), fetchSetupKey()]);
-        } catch {
-            setQrCodeSvg(null);
-            setManualSetupKey(null);
-        }
-    }, [fetchQrCode, fetchSetupKey]);
+    const requestSetupData = useCallback((): void => {}, []);
+    const fetchRecoveryCodes = useCallback((): void => {}, []);
+    const clearTwoFactorAuthData = useCallback((): void => {}, []);
 
     return {
         qrCodeSvg,
@@ -100,12 +38,8 @@ export const useTwoFactorAuth = (): UseTwoFactorAuthReturn => {
         recoveryCodesList,
         hasSetupData,
         errors,
-        clearErrors,
-        clearSetupData,
-        clearTwoFactorAuthData,
-        fetchQrCode,
-        fetchSetupKey,
-        fetchSetupData,
+        requestSetupData,
         fetchRecoveryCodes,
+        clearTwoFactorAuthData,
     };
 };
