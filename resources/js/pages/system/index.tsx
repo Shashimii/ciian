@@ -112,6 +112,9 @@ export default function SystemIndex({
             {
                 id: 'name',
                 header: 'Name',
+                sortable: true,
+                sortValue: (row) => row.name,
+                searchValue: (row) => row.name,
                 cell: (row) => {
                     const RowIcon = resolveLucideIcon(row.icon);
 
@@ -131,6 +134,9 @@ export default function SystemIndex({
             {
                 id: 'tag',
                 header: 'Tag',
+                sortable: true,
+                sortValue: (row) => row.name,
+                searchValue: (row) => row.name,
                 cell: (row) => (
                     <TagBadge
                         system={{
@@ -146,6 +152,9 @@ export default function SystemIndex({
             {
                 id: 'slug',
                 header: 'Slug',
+                sortable: true,
+                sortValue: (row) => row.slug,
+                searchValue: (row) => row.slug,
                 cell: (row) => (
                     <span className="font-mono text-xs text-muted-foreground">
                         {row.slug}
@@ -155,6 +164,9 @@ export default function SystemIndex({
             {
                 id: 'tables_count',
                 header: 'Tables',
+                sortable: true,
+                sortValue: (row) => row.tables_count,
+                searchValue: (row) => row.tables_count,
                 cell: (row) => row.tables_count,
             },
         ],
@@ -233,6 +245,7 @@ export default function SystemIndex({
                     columns={columns}
                     getRowKey={(row) => row.key}
                     emptyMessage="No systems yet."
+                    searchPlaceholder="Search systems…"
                     onRowClick={(row) => {
                         if (row.kind === 'ciian') {
                             openCiian();

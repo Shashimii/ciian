@@ -46,6 +46,9 @@ export default function TableIndex({ tables }: Props) {
             {
                 id: 'name',
                 header: 'Name',
+                sortable: true,
+                sortValue: (row) => row.name,
+                searchValue: (row) => row.name,
                 cell: (row) => {
                     const RowIcon = resolveLucideIcon(row.icon);
 
@@ -65,6 +68,9 @@ export default function TableIndex({ tables }: Props) {
             {
                 id: 'slug',
                 header: 'Database name',
+                sortable: true,
+                sortValue: (row) => row.slug,
+                searchValue: (row) => row.slug,
                 cell: (row) => (
                     <span className="font-mono text-xs text-muted-foreground">
                         {row.slug}
@@ -74,11 +80,18 @@ export default function TableIndex({ tables }: Props) {
             {
                 id: 'system',
                 header: 'System',
+                sortable: true,
+                sortValue: (row) => row.system.label,
+                searchValue: (row) =>
+                    `${row.system.label} ${row.system.slug}`,
                 cell: (row) => <TagBadge system={row.system} />,
             },
             {
                 id: 'status',
                 header: 'Status',
+                sortable: true,
+                sortValue: (row) => row.status,
+                searchValue: (row) => row.status,
                 cell: (row) => (
                     <Badge
                         variant={
@@ -121,6 +134,7 @@ export default function TableIndex({ tables }: Props) {
                     columns={columns}
                     getRowKey={(row) => row.key}
                     emptyMessage="No tables yet. Create one to get started."
+                    searchPlaceholder="Search tables…"
                     onRowClick={openEdit}
                     onPublish={publishTable}
                     canPublish={(row) => row.can_publish}
