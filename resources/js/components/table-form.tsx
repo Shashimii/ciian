@@ -594,7 +594,7 @@ export default function TableForm({
                                 onChange={(event) =>
                                     updateName(event.target.value)
                                 }
-                                placeholder="Permissions"
+                                placeholder="Enter Table Name"
                             />
                             <InputError message={form.errors.name} />
                         </div>
@@ -610,6 +610,7 @@ export default function TableForm({
                                     value={form.data.slug}
                                     readOnly
                                     disabled
+                                    placeholder="Enter Table Name Slug"
                                 />
                                 <InputError message={form.errors.slug} />
                             </div>
@@ -640,7 +641,7 @@ export default function TableForm({
                                                 id="table-system"
                                                 className="w-full"
                                             >
-                                                <SelectValue placeholder="Select a system" />
+                                                <SelectValue placeholder="Select Table System" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {systems.map((system) => (
@@ -777,7 +778,7 @@ export default function TableForm({
                                         id="column-name"
                                         value={selectedColumn.name}
                                         disabled={selectedColumnLocked}
-                                        placeholder="column_name"
+                                        placeholder="Enter Column Name"
                                         onChange={(event) =>
                                             updateColumn(selectedColumnIndex, {
                                                 name: event.target.value,
@@ -801,7 +802,7 @@ export default function TableForm({
                                             id="column-type"
                                             className="w-full"
                                         >
-                                            <SelectValue />
+                                            <SelectValue placeholder="Select Column Type" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {typeGroups.map((group) => (
@@ -923,6 +924,7 @@ export default function TableForm({
                                                     id="column-length"
                                                     type="number"
                                                     min={1}
+                                                    placeholder="Enter Length"
                                                     value={
                                                         selectedColumn.length ??
                                                         ''
@@ -957,6 +959,7 @@ export default function TableForm({
                                                 </Label>
                                                 <Input
                                                     id="column-default"
+                                                    placeholder="Enter Default Value"
                                                     value={
                                                         selectedColumn.default?.toString() ??
                                                         ''
@@ -1003,7 +1006,7 @@ export default function TableForm({
                                                         id="column-references"
                                                         className="w-full"
                                                     >
-                                                        <SelectValue placeholder="Select a table" />
+                                                        <SelectValue placeholder="Select References" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {relationTables.map(
@@ -1054,7 +1057,7 @@ export default function TableForm({
                                                         id="column-on-delete"
                                                         className="w-full"
                                                     >
-                                                        <SelectValue />
+                                                        <SelectValue placeholder="Select On Delete" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {ON_DELETE_ACTIONS.map(
@@ -1088,6 +1091,7 @@ export default function TableForm({
                                                 </Label>
                                                 <Input
                                                     id="column-values"
+                                                    placeholder="Enter Values (comma-separated)"
                                                     value={(
                                                         selectedColumn.values ??
                                                         []
