@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Database\TableController;
+use App\Http\Controllers\System\SystemController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,6 +17,10 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('admin')->group(function () {
     Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+        Route::middleware('permission:systems.manage')->group(function () {
+            Route::get('systems', [SystemController::class, 'index'])->name('systems.index');
+        });
 
         Route::middleware('permission:tables.manage')->group(function () {
             Route::get('tables', [TableController::class, 'index'])->name('tables.index');
