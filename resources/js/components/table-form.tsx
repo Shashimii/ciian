@@ -1,20 +1,36 @@
 import {
+    closestCenter,
+    DndContext,
+    type DragEndEvent,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
     Link,
     resetLayoutProps,
     setLayoutProps,
     useForm,
 } from '@inertiajs/react';
-import Editor from '@monaco-editor/react';
 import { GripVertical, Lock, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     store,
     updateInternal,
     updateSystem,
 } from '@/actions/App/Http/Controllers/Database/TableController';
 import InputError from '@/components/input-error';
+import JsonShapeEditor from '@/components/json-shape-editor';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -22,7 +38,9 @@ import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
@@ -31,22 +49,34 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAppearance } from '@/hooks/use-appearance';
+import { clearFieldErrors } from '@/lib/clear-field-errors';
+import {
+    columnSupports,
+    columnTypeLabel,
+    groupedColumnTypes,
+    isLockedIdColumn,
+    ON_DELETE_ACTIONS,
+} from '@/lib/column-types';
+import { formatShapeJsonError } from '@/lib/format-shape-json-error';
 import { resolveLucideIcon, TABLE_ICON_OPTIONS } from '@/lib/lucide-icons';
 import { cn } from '@/lib/utils';
 import { index as tablesIndex } from '@/routes/tables';
 import type {
+    RelationTableOption,
     SystemOption,
     TableColumnShape,
     TableRow,
     TableShape,
 } from '@/types';
 
+export type { RelationTableOption };
+
 type Props = {
     mode: 'create' | 'edit';
     table?: TableRow | null;
     systems: SystemOption[];
     columnTypes: Record<string, string>;
+    relationTables?: RelationTableOption[];
 };
 
 const defaultIdColumn = (): TableColumnShape => ({
@@ -64,19 +94,151 @@ function slugify(value: string): string {
         .replace(/^_+|_+$/g, '');
 }
 
-function isLockedIdColumn(column: TableColumnShape): boolean {
-    return column.name === 'id' && column.type === 'id';
+function shapeFromColumns(
+    name: string,
+    slug: string,
+    systemLabel: string,
+    columns: TableColumnShape[],
+    timestamps: boolean,
+): TableShape {
+    return {
+        tbl_name: name,
+        tbl_db_name: slug,
+        tbl_sys: systemLabel,
+        columns,
+        timestamps,
+    };
 }
 
-function columnTypeLabel(
-    column: TableColumnShape,
-    columnTypes: Record<string, string>,
-): string {
-    if (column.type === 'id' && column.auto_increment) {
-        return 'Auto Increment';
+function columnsFromShape(raw: unknown): {
+    columns: TableColumnShape[];
+    timestamps: boolean;
+} | null {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+        return null;
     }
 
-    return columnTypes[column.type] ?? column.type;
+    const shape = raw as Record<string, unknown>;
+    const columns = shape.columns;
+
+    if (!Array.isArray(columns) || columns.length === 0) {
+        return null;
+    }
+
+    const normalized = columns
+        .filter((column): column is Record<string, unknown> => {
+            return Boolean(column) && typeof column === 'object' && !Array.isArray(column);
+        })
+        .map((column) => ({
+            ...(column as TableColumnShape),
+            name: String(column.name ?? ''),
+            type: String(column.type ?? 'string'),
+        }));
+
+    if (normalized.length === 0) {
+        return null;
+    }
+
+    return {
+        columns: normalized,
+        timestamps: Boolean(shape.timestamps ?? true),
+    };
+}
+
+type SortableColumnRowProps = {
+    id: string;
+    column: TableColumnShape;
+    selected: boolean;
+    locked: boolean;
+    typeLabel: string;
+    onSelect: () => void;
+    onRemove: () => void;
+};
+
+function SortableColumnRow({
+    id,
+    column,
+    selected,
+    locked,
+    typeLabel,
+    onSelect,
+    onRemove,
+}: SortableColumnRowProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id, disabled: locked });
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={{
+                transform: CSS.Transform.toString(transform),
+                transition,
+            }}
+            className={cn(
+                'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm',
+                selected && 'border-primary bg-primary/5',
+                isDragging && 'z-10 bg-background shadow-md',
+            )}
+        >
+            <button
+                type="button"
+                className={cn(
+                    'touch-none text-muted-foreground',
+                    locked
+                        ? 'cursor-not-allowed opacity-40'
+                        : 'cursor-grab active:cursor-grabbing',
+                )}
+                aria-label="Drag to reorder"
+                disabled={locked}
+                {...attributes}
+                {...listeners}
+            >
+                <GripVertical className="size-4" />
+            </button>
+
+            <button
+                type="button"
+                className="min-w-0 flex-1 text-left"
+                onClick={onSelect}
+            >
+                <div className="truncate font-medium">
+                    {column.name || 'Untitled'}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                    {typeLabel}
+                </div>
+            </button>
+
+            {locked ? (
+                <Lock className="size-4 shrink-0 text-muted-foreground" />
+            ) : (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            aria-label="Delete"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                onRemove();
+                            }}
+                        >
+                            <Trash2 className="size-4" />
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
+            )}
+        </div>
+    );
 }
 
 export default function TableForm({
@@ -84,26 +246,31 @@ export default function TableForm({
     table = null,
     systems,
     columnTypes,
+    relationTables = [],
 }: Props) {
     const isEdit = mode === 'edit';
-    const { resolvedAppearance } = useAppearance();
+    const syncingFromEditor = useRef(false);
     const [showIconPicker, setShowIconPicker] = useState(false);
     const [iconTooltipOpen, setIconTooltipOpen] = useState(false);
-    const [columns, setColumns] = useState<TableColumnShape[]>(
-        () => table?.unpub_shape?.columns ?? [defaultIdColumn()],
-    );
-    const [timestamps, setTimestamps] = useState(
-        () => table?.unpub_shape?.timestamps ?? true,
-    );
-    const [slugTouched, setSlugTouched] = useState(isEdit);
     const [selectedColumnIndex, setSelectedColumnIndex] = useState(0);
+    const [jsonError, setJsonError] = useState<string | null>(null);
+    const [jsonText, setJsonText] = useState('');
 
     const form = useForm({
         name: table?.name ?? '',
         slug: table?.slug ?? '',
         system: table?.system.slug ?? systems[0]?.value ?? 'ciian',
         icon: table?.icon ?? 'Sparkles',
+        shape: {
+            columns: table?.unpub_shape?.columns?.length
+                ? table.unpub_shape.columns
+                : [defaultIdColumn()],
+            timestamps: table?.unpub_shape?.timestamps ?? true,
+        } satisfies Pick<TableShape, 'columns' | 'timestamps'>,
     });
+
+    const columns = form.data.shape.columns;
+    const timestamps = form.data.shape.timestamps;
 
     const selectedSystem = systems.find(
         (system) => system.value === form.data.system,
@@ -113,11 +280,16 @@ export default function TableForm({
         : (selectedSystem?.internal ?? true);
 
     const systemLabel = isEdit
-        ? table?.system.label
+        ? (table?.system.label ?? '')
         : (selectedSystem?.label ?? 'Ciian');
 
     const selectedIcon = resolveLucideIcon(
-        showIconEditor ? form.data.icon : (table?.system.icon ?? 'Sparkles'),
+        showIconEditor ? form.data.icon : (table?.system.icon ?? selectedSystem?.icon ?? 'Sparkles'),
+    );
+
+    const typeGroups = useMemo(
+        () => groupedColumnTypes(columnTypes),
+        [columnTypes],
     );
 
     const selectedColumn = columns[selectedColumnIndex] ?? columns[0];
@@ -125,36 +297,169 @@ export default function TableForm({
         ? isLockedIdColumn(selectedColumn)
         : false;
 
-    const shape = useMemo<TableShape>(
-        () => ({
+    const columnIds = useMemo(
+        () => columns.map((_, index) => `column-${index}`),
+        [columns],
+    );
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        }),
+    );
+
+    const isDirty = form.isDirty;
+
+    const publishShapePreview = () => {
+        const shape = shapeFromColumns(
+            form.data.name,
+            form.data.slug,
+            systemLabel,
             columns,
             timestamps,
-        }),
-        [columns, timestamps],
-    );
+        );
+        setJsonText(JSON.stringify(shape, null, 2));
+        setJsonError(null);
+    };
 
-    const shapePreview = useMemo(
-        () =>
-            JSON.stringify(
-                {
-                    tbl_name: form.data.name,
-                    tbl_db_name: form.data.slug,
-                    tbl_sys: systemLabel,
-                    columns,
-                    ...(timestamps ? { timestamps: true } : {}),
-                },
-                null,
-                2,
+    useEffect(() => {
+        if (syncingFromEditor.current) {
+            syncingFromEditor.current = false;
+            return;
+        }
+
+        publishShapePreview();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [form.data.name, form.data.slug, systemLabel, columns, timestamps]);
+
+    const setColumns = (next: TableColumnShape[]) => {
+        form.setData('shape', {
+            ...form.data.shape,
+            columns: next,
+        });
+        clearFieldErrors(form, 'shape');
+    };
+
+    const setTimestamps = (next: boolean) => {
+        form.setData('shape', {
+            ...form.data.shape,
+            timestamps: next,
+        });
+        clearFieldErrors(form, 'shape');
+    };
+
+    const updateColumn = (index: number, patch: Partial<TableColumnShape>) => {
+        setColumns(
+            columns.map((column, columnIndex) =>
+                columnIndex === index ? { ...column, ...patch } : column,
             ),
-        [columns, form.data.name, form.data.slug, systemLabel, timestamps],
-    );
+        );
+    };
+
+    const addColumn = () => {
+        const next = [
+            ...columns,
+            {
+                name: '',
+                type: 'string',
+                nullable: true,
+            } satisfies TableColumnShape,
+        ];
+        setColumns(next);
+        setSelectedColumnIndex(next.length - 1);
+    };
+
+    const removeColumn = (index: number) => {
+        if (isLockedIdColumn(columns[index])) {
+            return;
+        }
+
+        const next = columns.filter((_, columnIndex) => columnIndex !== index);
+        setColumns(next);
+        setSelectedColumnIndex((current) => {
+            if (current === index) {
+                return Math.max(0, index - 1);
+            }
+
+            return current > index ? current - 1 : current;
+        });
+    };
+
+    const onDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        const oldIndex = columnIds.indexOf(String(active.id));
+        const newIndex = columnIds.indexOf(String(over.id));
+
+        if (oldIndex < 0 || newIndex < 0) {
+            return;
+        }
+
+        if (oldIndex === 0 || newIndex === 0) {
+            return;
+        }
+
+        const next = arrayMove(columns, oldIndex, newIndex);
+        setColumns(next);
+        setSelectedColumnIndex(newIndex);
+    };
+
+    const updateName = (value: string) => {
+        form.setData('name', value);
+        clearFieldErrors(form, 'name');
+
+        if (!isEdit) {
+            form.setData('slug', slugify(value));
+            clearFieldErrors(form, 'slug');
+        }
+    };
+
+    const handleJsonChange = (value: string) => {
+        setJsonText(value);
+
+        try {
+            const parsed = JSON.parse(value) as unknown;
+            const next = columnsFromShape(parsed);
+
+            if (!next) {
+                setJsonError('Shape must include a non-empty columns array.');
+                return;
+            }
+
+            syncingFromEditor.current = true;
+            setJsonError(null);
+            form.setData('shape', {
+                columns: next.columns,
+                timestamps: next.timestamps,
+            });
+            clearFieldErrors(form, 'shape');
+
+            if (selectedColumnIndex >= next.columns.length) {
+                setSelectedColumnIndex(Math.max(0, next.columns.length - 1));
+            }
+        } catch (error) {
+            setJsonError(formatShapeJsonError(error));
+        }
+    };
 
     const submit = () => {
+        if (jsonError) {
+            return;
+        }
+
         const payload = {
             name: form.data.name,
             slug: form.data.slug,
             icon: form.data.icon,
-            shape,
+            shape: {
+                columns,
+                timestamps,
+            },
             ...(isEdit ? {} : { system: form.data.system }),
         };
 
@@ -162,19 +467,19 @@ export default function TableForm({
             const route =
                 table.store === 'internal' ? updateInternal : updateSystem;
 
-            form.transform(() => payload).patch(route.url(table.id), {
-                preserveScroll: true,
-            });
-
+            form.transform(() => payload).patch(route.url(table.id));
             return;
         }
 
-        form.transform(() => payload).post(store.url(), {
-            preserveScroll: true,
-        });
+        form.transform(() => payload).post(store.url());
     };
 
     useEffect(() => {
+        const canSubmit =
+            !form.processing &&
+            !jsonError &&
+            (!isEdit || isDirty);
+
         setLayoutProps({
             headerActions: (
                 <div className="flex items-center gap-2">
@@ -184,9 +489,9 @@ export default function TableForm({
                     <Button
                         type="submit"
                         form="table-form"
-                        disabled={form.processing}
+                        disabled={!canSubmit}
                     >
-                        {isEdit ? 'Save changes' : 'Save draft'}
+                        {isEdit ? 'Save changes' : 'Create table'}
                     </Button>
                 </div>
             ),
@@ -195,235 +500,169 @@ export default function TableForm({
         return () => {
             resetLayoutProps();
         };
-    }, [form.processing, isEdit]);
-
-    const updateName = (value: string) => {
-        form.setData('name', value);
-        form.clearErrors('name');
-
-        if (!isEdit && !slugTouched) {
-            form.setData('slug', slugify(value));
-            form.clearErrors('slug');
-        }
-    };
-
-    const addColumn = () => {
-        setColumns((current) => {
-            const next = [
-                ...current,
-                {
-                    name: '',
-                    type: 'string',
-                    nullable: true,
-                },
-            ];
-
-            setSelectedColumnIndex(next.length - 1);
-
-            return next;
-        });
-    };
-
-    const updateColumn = (index: number, patch: Partial<TableColumnShape>) => {
-        setColumns((current) =>
-            current.map((column, columnIndex) =>
-                columnIndex === index ? { ...column, ...patch } : column,
-            ),
-        );
-    };
-
-    const removeColumn = (index: number) => {
-        setColumns((current) => {
-            const next = current.filter((_, columnIndex) => columnIndex !== index);
-
-            setSelectedColumnIndex((currentIndex) => {
-                if (currentIndex === index) {
-                    return Math.max(0, index - 1);
-                }
-
-                if (currentIndex > index) {
-                    return currentIndex - 1;
-                }
-
-                return currentIndex;
-            });
-
-            return next;
-        });
-    };
+    }, [form.processing, isDirty, isEdit, jsonError]);
 
     return (
         <form
             id="table-form"
             noValidate
-            className="space-y-4"
+            className="flex min-h-0 flex-1 flex-col gap-4"
             onSubmit={(event) => {
                 event.preventDefault();
                 submit();
             }}
         >
-            <Card className="py-4 shadow-none">
-                <CardContent className="space-y-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-                        <div className="flex items-end gap-3">
-                            {showIconEditor ? (
-                                <Tooltip
-                                    open={iconTooltipOpen}
-                                    onOpenChange={setIconTooltipOpen}
-                                >
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            type="button"
-                                            className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 transition-colors hover:border-primary/40 hover:bg-muted"
-                                            aria-label="Change icon"
-                                            onPointerEnter={() =>
-                                                setIconTooltipOpen(true)
-                                            }
-                                            onPointerLeave={() =>
-                                                setIconTooltipOpen(false)
-                                            }
-                                            onClick={() =>
-                                                setShowIconPicker(
-                                                    (current) => !current,
-                                                )
-                                            }
-                                        >
-                                            {selectedIcon && (
-                                                <Icon
-                                                    iconNode={selectedIcon}
-                                                    className="size-7"
-                                                />
-                                            )}
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Change icon</TooltipContent>
-                                </Tooltip>
-                            ) : (
-                                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40">
-                                    {selectedIcon && (
-                                        <Icon
-                                            iconNode={selectedIcon}
-                                            className="size-7"
-                                        />
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="min-w-[12rem] flex-1 space-y-2">
-                                <Label htmlFor="table-name">Table Name</Label>
-                                <Input
-                                    id="table-name"
-                                    value={form.data.name}
-                                    onChange={(event) =>
-                                        updateName(event.target.value)
-                                    }
-                                    placeholder="Permissions"
-                                />
-                                <InputError message={form.errors.name} />
-                            </div>
-                        </div>
-
-                        <div className="grid flex-1 gap-4 sm:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label htmlFor="table-slug">
-                                    Table Name Slug
-                                </Label>
-                                <Input
-                                    id="table-slug"
-                                    value={form.data.slug}
-                                    disabled={isEdit}
-                                    onChange={(event) => {
-                                        setSlugTouched(true);
-                                        form.setData('slug', event.target.value);
-                                        form.clearErrors('slug');
-                                    }}
-                                    placeholder="permissions"
-                                />
-                                <InputError message={form.errors.slug} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="table-system">Table System</Label>
-                                {isEdit ? (
-                                    <Input
-                                        id="table-system"
-                                        value={systemLabel}
-                                        disabled
-                                    />
-                                ) : (
-                                    <>
-                                        <Select
-                                            value={form.data.system}
-                                            onValueChange={(value) => {
-                                                form.setData('system', value);
-                                                form.clearErrors('system');
-                                            }}
-                                        >
-                                            <SelectTrigger id="table-system">
-                                                <SelectValue placeholder="Select a system" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {systems.map((system) => (
-                                                    <SelectItem
-                                                        key={system.value}
-                                                        value={system.value}
-                                                    >
-                                                        {system.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <InputError
-                                            message={form.errors.system}
-                                        />
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {showIconEditor && showIconPicker && (
-                        <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-12">
-                            {TABLE_ICON_OPTIONS.map((iconName) => {
-                                const IconComponent =
-                                    resolveLucideIcon(iconName);
-
-                                return (
+            <div className="rounded-xl border bg-card p-4 shadow-sm">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+                    <div className="flex items-end gap-3">
+                        {showIconEditor ? (
+                            <Tooltip
+                                open={iconTooltipOpen}
+                                onOpenChange={setIconTooltipOpen}
+                            >
+                                <TooltipTrigger asChild>
                                     <button
-                                        key={iconName}
                                         type="button"
-                                        className={cn(
-                                            'flex h-10 items-center justify-center rounded-md border',
-                                            form.data.icon === iconName &&
-                                                'border-primary bg-primary/10 text-primary',
-                                        )}
-                                        onClick={() => {
-                                            form.setData('icon', iconName);
-                                            setShowIconPicker(false);
-                                        }}
+                                        className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 transition-colors hover:border-primary/40 hover:bg-muted"
+                                        aria-label="Change icon"
+                                        onPointerEnter={() =>
+                                            setIconTooltipOpen(true)
+                                        }
+                                        onPointerLeave={() =>
+                                            setIconTooltipOpen(false)
+                                        }
+                                        onClick={() =>
+                                            setShowIconPicker(
+                                                (current) => !current,
+                                            )
+                                        }
                                     >
-                                        {IconComponent && (
+                                        {selectedIcon && (
                                             <Icon
-                                                iconNode={IconComponent}
-                                                className="size-4"
+                                                iconNode={selectedIcon}
+                                                className="size-7"
                                             />
                                         )}
                                     </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+                                </TooltipTrigger>
+                                <TooltipContent>Change icon</TooltipContent>
+                            </Tooltip>
+                        ) : (
+                            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40">
+                                {selectedIcon && (
+                                    <Icon
+                                        iconNode={selectedIcon}
+                                        className="size-7"
+                                    />
+                                )}
+                            </div>
+                        )}
 
-            <div className="grid min-h-[32rem] gap-4 xl:grid-cols-12">
-                <Card className="flex flex-col py-4 shadow-none xl:col-span-3">
-                    <CardHeader className="flex-row items-center justify-between space-y-0 px-4 pb-3">
-                        <CardTitle className="text-sm font-semibold">
-                            Table Columns
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-1 flex-col gap-2 px-4">
+                        <div className="min-w-[12rem] flex-1 space-y-2">
+                            <Label htmlFor="table-name">Table Name</Label>
+                            <Input
+                                id="table-name"
+                                data-field="name"
+                                value={form.data.name}
+                                onChange={(event) =>
+                                    updateName(event.target.value)
+                                }
+                                placeholder="Permissions"
+                            />
+                            <InputError message={form.errors.name} />
+                        </div>
+                    </div>
+
+                    <div className="grid flex-1 gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="table-slug">Table Name Slug</Label>
+                            <Input
+                                id="table-slug"
+                                data-field="slug"
+                                value={form.data.slug}
+                                readOnly
+                                disabled
+                            />
+                            <InputError message={form.errors.slug} />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="table-system">Table System</Label>
+                            {isEdit ? (
+                                <Input
+                                    id="table-system"
+                                    value={systemLabel}
+                                    disabled
+                                />
+                            ) : (
+                                <>
+                                    <Select
+                                        value={form.data.system}
+                                        onValueChange={(value) => {
+                                            form.setData('system', value);
+                                            clearFieldErrors(form, 'system');
+                                        }}
+                                    >
+                                        <SelectTrigger id="table-system">
+                                            <SelectValue placeholder="Select a system" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {systems.map((system) => (
+                                                <SelectItem
+                                                    key={system.value}
+                                                    value={system.value}
+                                                >
+                                                    {system.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <InputError message={form.errors.system} />
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {showIconEditor && showIconPicker && (
+                    <div className="mt-4 grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-12">
+                        {TABLE_ICON_OPTIONS.map((iconName) => {
+                            const IconComponent = resolveLucideIcon(iconName);
+
+                            return (
+                                <button
+                                    key={iconName}
+                                    type="button"
+                                    className={cn(
+                                        'flex h-10 items-center justify-center rounded-md border',
+                                        form.data.icon === iconName &&
+                                            'border-primary bg-primary/10 text-primary',
+                                    )}
+                                    onClick={() => {
+                                        form.setData('icon', iconName);
+                                        setShowIconPicker(false);
+                                    }}
+                                >
+                                    {IconComponent && (
+                                        <Icon
+                                            iconNode={IconComponent}
+                                            className="size-4"
+                                        />
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-12">
+                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm xl:col-span-3">
+                    <div className="border-b px-4 py-3">
+                        <h2 className="text-sm font-semibold">Table Columns</h2>
+                    </div>
+
+                    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4">
                         <button
                             type="button"
                             className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted/40 hover:text-foreground"
@@ -433,56 +672,53 @@ export default function TableForm({
                             Add Column
                         </button>
 
-                        <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
-                            {columns.map((column, index) => {
-                                const isLocked = isLockedIdColumn(column);
-                                const isSelected = selectedColumnIndex === index;
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={onDragEnd}
+                        >
+                            <SortableContext
+                                items={columnIds}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                <div className="space-y-2">
+                                    {columns.map((column, index) => (
+                                        <SortableColumnRow
+                                            key={columnIds[index]}
+                                            id={columnIds[index]}
+                                            column={column}
+                                            selected={
+                                                selectedColumnIndex === index
+                                            }
+                                            locked={isLockedIdColumn(column)}
+                                            typeLabel={columnTypeLabel(
+                                                column.type,
+                                                columnTypes[column.type],
+                                            )}
+                                            onSelect={() =>
+                                                setSelectedColumnIndex(index)
+                                            }
+                                            onRemove={() =>
+                                                removeColumn(index)
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            </SortableContext>
+                        </DndContext>
+                    </div>
+                </div>
 
-                                return (
-                                    <button
-                                        key={`${column.name}-${index}`}
-                                        type="button"
-                                        className={cn(
-                                            'flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors',
-                                            isSelected
-                                                ? 'border-primary bg-primary/5'
-                                                : 'hover:bg-muted/40',
-                                        )}
-                                        onClick={() =>
-                                            setSelectedColumnIndex(index)
-                                        }
-                                    >
-                                        <GripVertical className="size-4 shrink-0 text-muted-foreground" />
-                                        <div className="min-w-0 flex-1">
-                                            <div className="truncate font-medium">
-                                                {column.name || 'Untitled'}
-                                            </div>
-                                            <div className="truncate text-xs text-muted-foreground">
-                                                {columnTypeLabel(
-                                                    column,
-                                                    columnTypes,
-                                                )}
-                                            </div>
-                                        </div>
-                                        {isLocked && (
-                                            <Lock className="size-4 shrink-0 text-muted-foreground" />
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="flex flex-col py-4 shadow-none xl:col-span-4">
-                    <CardHeader className="px-4 pb-3">
-                        <CardTitle className="text-sm font-semibold">
+                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm xl:col-span-4">
+                    <div className="border-b px-4 py-3">
+                        <h2 className="text-sm font-semibold">
                             Table Column Properties
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-1 flex-col gap-4 px-4">
+                        </h2>
+                    </div>
+
+                    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
                         {selectedColumn && (
-                            <>
+                            <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="column-name">Name</Label>
                                     <Input
@@ -509,73 +745,325 @@ export default function TableForm({
                                             })
                                         }
                                     >
-                                        <SelectTrigger id="column-type">
+                                        <SelectTrigger
+                                            id="column-type"
+                                            className="w-full"
+                                        >
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {Object.entries(columnTypes).map(
-                                                ([value, label]) => (
-                                                    <SelectItem
-                                                        key={value}
-                                                        value={value}
-                                                    >
-                                                        {label}
-                                                    </SelectItem>
-                                                ),
-                                            )}
+                                            {typeGroups.map((group) => (
+                                                <SelectGroup key={group.label}>
+                                                    <SelectLabel>
+                                                        {group.label}
+                                                    </SelectLabel>
+                                                    {group.types.map((type) => (
+                                                        <SelectItem
+                                                            key={type.value}
+                                                            value={type.value}
+                                                        >
+                                                            {type.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
 
-                                {!selectedColumnLocked && (
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2">
-                                            <Checkbox
-                                                id="column-nullable"
-                                                checked={
-                                                    selectedColumn.nullable ??
-                                                    false
-                                                }
-                                                onCheckedChange={(checked) =>
-                                                    updateColumn(
-                                                        selectedColumnIndex,
-                                                        {
-                                                            nullable:
-                                                                checked ===
-                                                                true,
-                                                        },
-                                                    )
-                                                }
-                                            />
-                                            <Label htmlFor="column-nullable">
-                                                Nullable
-                                            </Label>
-                                        </div>
-
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                            onClick={() =>
-                                                removeColumn(
-                                                    selectedColumnIndex,
-                                                )
-                                            }
-                                        >
-                                            <Trash2 className="size-4" />
-                                            Remove
-                                        </Button>
-                                    </div>
-                                )}
-
-                                {selectedColumnLocked && (
+                                {selectedColumnLocked ? (
                                     <p className="text-sm text-muted-foreground">
                                         The primary key column is locked and
                                         always included.
                                     </p>
+                                ) : (
+                                    <div className="grid gap-3">
+                                        {columnSupports(
+                                            selectedColumn.type,
+                                            'nullable',
+                                        ) && (
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    checked={
+                                                        selectedColumn.nullable ??
+                                                        false
+                                                    }
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        updateColumn(
+                                                            selectedColumnIndex,
+                                                            {
+                                                                nullable:
+                                                                    checked ===
+                                                                    true,
+                                                            },
+                                                        )
+                                                    }
+                                                />
+                                                Nullable
+                                            </label>
+                                        )}
+
+                                        {columnSupports(
+                                            selectedColumn.type,
+                                            'unique',
+                                        ) && (
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    checked={
+                                                        selectedColumn.unique ??
+                                                        false
+                                                    }
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        updateColumn(
+                                                            selectedColumnIndex,
+                                                            {
+                                                                unique:
+                                                                    checked ===
+                                                                    true,
+                                                            },
+                                                        )
+                                                    }
+                                                />
+                                                Unique
+                                            </label>
+                                        )}
+
+                                        {columnSupports(
+                                            selectedColumn.type,
+                                            'indexed',
+                                        ) && (
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <Checkbox
+                                                    checked={
+                                                        selectedColumn.indexed ??
+                                                        false
+                                                    }
+                                                    onCheckedChange={(
+                                                        checked,
+                                                    ) =>
+                                                        updateColumn(
+                                                            selectedColumnIndex,
+                                                            {
+                                                                indexed:
+                                                                    checked ===
+                                                                    true,
+                                                            },
+                                                        )
+                                                    }
+                                                />
+                                                Indexed
+                                            </label>
+                                        )}
+
+                                        {columnSupports(
+                                            selectedColumn.type,
+                                            'length',
+                                        ) && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="column-length">
+                                                    Length
+                                                </Label>
+                                                <Input
+                                                    id="column-length"
+                                                    type="number"
+                                                    min={1}
+                                                    value={
+                                                        selectedColumn.length ??
+                                                        ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        updateColumn(
+                                                            selectedColumnIndex,
+                                                            {
+                                                                length: event
+                                                                    .target
+                                                                    .value
+                                                                    ? Number(
+                                                                          event
+                                                                              .target
+                                                                              .value,
+                                                                      )
+                                                                    : undefined,
+                                                            },
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+
+                                        {columnSupports(
+                                            selectedColumn.type,
+                                            'default',
+                                        ) && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="column-default">
+                                                    Default
+                                                </Label>
+                                                <Input
+                                                    id="column-default"
+                                                    value={
+                                                        selectedColumn.default?.toString() ??
+                                                        ''
+                                                    }
+                                                    onChange={(event) =>
+                                                        updateColumn(
+                                                            selectedColumnIndex,
+                                                            {
+                                                                default:
+                                                                    event.target
+                                                                        .value ||
+                                                                    undefined,
+                                                            },
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+
+                                        {columnSupports(
+                                            selectedColumn.type,
+                                            'references',
+                                        ) && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="column-references">
+                                                    References
+                                                </Label>
+                                                <Select
+                                                    value={
+                                                        selectedColumn.references ??
+                                                        ''
+                                                    }
+                                                    onValueChange={(value) =>
+                                                        updateColumn(
+                                                            selectedColumnIndex,
+                                                            {
+                                                                references:
+                                                                    value,
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    <SelectTrigger
+                                                        id="column-references"
+                                                        className="w-full"
+                                                    >
+                                                        <SelectValue placeholder="Select a table" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {relationTables.map(
+                                                            (relation) => (
+                                                                <SelectItem
+                                                                    key={
+                                                                        relation.value
+                                                                    }
+                                                                    value={
+                                                                        relation.value
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        relation.label
+                                                                    }
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        {columnSupports(
+                                            selectedColumn.type,
+                                            'on_delete',
+                                        ) && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="column-on-delete">
+                                                    On delete
+                                                </Label>
+                                                <Select
+                                                    value={
+                                                        selectedColumn.on_delete ??
+                                                        'restrict'
+                                                    }
+                                                    onValueChange={(value) =>
+                                                        updateColumn(
+                                                            selectedColumnIndex,
+                                                            {
+                                                                on_delete:
+                                                                    value,
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    <SelectTrigger
+                                                        id="column-on-delete"
+                                                        className="w-full"
+                                                    >
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {ON_DELETE_ACTIONS.map(
+                                                            (action) => (
+                                                                <SelectItem
+                                                                    key={
+                                                                        action.value
+                                                                    }
+                                                                    value={
+                                                                        action.value
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        action.label
+                                                                    }
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        {columnSupports(
+                                            selectedColumn.type,
+                                            'values',
+                                        ) && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="column-values">
+                                                    Values (comma-separated)
+                                                </Label>
+                                                <Input
+                                                    id="column-values"
+                                                    value={(
+                                                        selectedColumn.values ??
+                                                        []
+                                                    ).join(', ')}
+                                                    onChange={(event) =>
+                                                        updateColumn(
+                                                            selectedColumnIndex,
+                                                            {
+                                                                values: event.target.value
+                                                                    .split(',')
+                                                                    .map(
+                                                                        (
+                                                                            part,
+                                                                        ) =>
+                                                                            part.trim(),
+                                                                    )
+                                                                    .filter(
+                                                                        Boolean,
+                                                                    ),
+                                                            },
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
-                            </>
+                            </div>
                         )}
 
                         <div className="mt-auto flex items-center gap-2 border-t pt-4">
@@ -592,49 +1080,27 @@ export default function TableForm({
                         </div>
 
                         <InputError message={form.errors.shape} />
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
-                <Card className="flex flex-col py-4 shadow-none xl:col-span-5">
-                    <CardHeader className="px-4 pb-3">
-                        <CardTitle className="text-sm font-semibold">
-                            Shape (JSON)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex min-h-[28rem] flex-1 px-4">
-                        <div className="min-h-[28rem] flex-1 overflow-hidden rounded-lg border">
-                            <Editor
-                                height="28rem"
-                                language="json"
-                                theme={
-                                    resolvedAppearance === 'dark'
-                                        ? 'vs-dark'
-                                        : 'light'
-                                }
-                                value={shapePreview}
-                                options={{
-                                    readOnly: true,
-                                    minimap: { enabled: false },
-                                    scrollBeyondLastLine: false,
-                                    fontSize: 12,
-                                    lineNumbers: 'on',
-                                    wordWrap: 'on',
-                                    folding: true,
-                                    automaticLayout: true,
-                                    tabSize: 2,
-                                    padding: { top: 12, bottom: 12 },
-                                    renderLineHighlight: 'none',
-                                    overviewRulerLanes: 0,
-                                    hideCursorInOverviewRuler: true,
-                                    scrollbar: {
-                                        verticalScrollbarSize: 8,
-                                        horizontalScrollbarSize: 8,
-                                    },
-                                }}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm xl:col-span-5">
+                    <div className="border-b px-4 py-3">
+                        <h2 className="text-sm font-semibold">Shape (JSON)</h2>
+                    </div>
+                    <div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
+                        <JsonShapeEditor
+                            value={jsonText}
+                            onChange={handleJsonChange}
+                            height="100%"
+                            className="min-h-[24rem] flex-1"
+                        />
+                        {jsonError && (
+                            <p className="text-sm text-destructive">
+                                {jsonError}
+                            </p>
+                        )}
+                    </div>
+                </div>
             </div>
         </form>
     );
