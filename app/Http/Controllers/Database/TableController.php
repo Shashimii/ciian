@@ -8,11 +8,25 @@ use App\Http\Requests\Database\StoreTableRequest;
 use App\Http\Requests\Database\UpdateTableRequest;
 use App\Models\Ciian\Database\InternalTable;
 use App\Models\Ciian\System\SystemTable;
+use App\Support\TableIndexPresenter;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class TableController extends Controller
 {
+    /**
+     * List Ciian internal and system-owned table shapes.
+     */
+    public function index(TableIndexPresenter $presenter): Response
+    {
+        return Inertia::render('table/index', [
+            'tables' => $presenter->tables(),
+            'systems' => $presenter->systemOptions(),
+            'columnTypes' => $presenter->columnTypeLabels(),
+        ]);
+    }
+
     /**
      * Store a new table draft (unpub_shape only).
      */
