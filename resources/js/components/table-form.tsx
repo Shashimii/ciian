@@ -272,8 +272,8 @@ export default function TableForm({
     const form = useForm({
         name: table?.name ?? '',
         slug: table?.slug ?? '',
-        system: table?.system.slug ?? systems[0]?.value ?? 'ciian',
-        icon: table?.icon ?? 'Sparkles',
+        system: table?.system.slug ?? 'no_system',
+        icon: table?.icon ?? 'CircleDashed',
         shape: {
             columns: table?.unpub_shape?.columns?.length
                 ? table.unpub_shape.columns
@@ -301,7 +301,7 @@ export default function TableForm({
 
     const systemLabel = isEdit
         ? (table?.system.label ?? '')
-        : (selectedSystem?.label ?? 'Ciian');
+        : (selectedSystem?.label ?? 'No System');
 
     const selectedIcon = resolveLucideIcon(
         showIconEditor ? form.data.icon : (table?.system.icon ?? selectedSystem?.icon ?? 'Sparkles'),
