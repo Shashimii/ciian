@@ -15,5 +15,8 @@ declare module '@inertiajs/core' {
             sidebarOpen: boolean;
             [key: string]: unknown;
         };
+        layoutProps: {
+            headerActions?: React.ReactNode;
+        };
     }
 }
