@@ -177,7 +177,9 @@ function SortableColumnRow({
         <div
             ref={setNodeRef}
             style={{
-                transform: CSS.Transform.toString(transform),
+                transform: CSS.Transform.toString(
+                    transform ? { ...transform, x: 0 } : null,
+                ),
                 transition,
             }}
             className={cn(
@@ -677,7 +679,7 @@ export default function TableForm({
                         <h2 className="text-sm font-semibold">Table Columns</h2>
                     </div>
 
-                    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-4">
+                    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto p-4">
                         <button
                             type="button"
                             className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-muted/40 hover:text-foreground"
