@@ -18,6 +18,7 @@ Route::prefix('admin')->group(function () {
         Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
         Route::middleware('permission:tables.manage')->group(function () {
+            Route::get('tables', [TableController::class, 'index'])->name('tables.index');
             Route::post('tables', [TableController::class, 'store'])->name('tables.store');
             Route::patch('tables/internal/{internalTable}', [TableController::class, 'updateInternal'])
                 ->name('tables.internal.update');
