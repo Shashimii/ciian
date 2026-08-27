@@ -538,43 +538,41 @@ export default function TableForm({
             }}
         >
             <div>
-                <div className="flex items-stretch gap-4">
+                <div className="flex items-start gap-4">
                     {showIconEditor ? (
-                        <div className="flex w-28 shrink-0 self-stretch sm:w-32">
-                            <Tooltip
-                                open={iconTooltipOpen}
-                                onOpenChange={setIconTooltipOpen}
-                            >
-                                <TooltipTrigger asChild>
-                                    <button
-                                        type="button"
-                                        className="flex h-full w-full items-center justify-center rounded-xl border text-foreground transition-colors hover:bg-muted/40"
-                                        aria-label="Change icon"
-                                        onPointerEnter={() =>
-                                            setIconTooltipOpen(true)
-                                        }
-                                        onPointerLeave={() =>
-                                            setIconTooltipOpen(false)
-                                        }
-                                        onClick={() =>
-                                            setShowIconPicker(
-                                                (current) => !current,
-                                            )
-                                        }
-                                    >
-                                        {selectedIcon && (
-                                            <Icon
-                                                iconNode={selectedIcon}
-                                                className="size-16 sm:size-20"
-                                            />
-                                        )}
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent>Change icon</TooltipContent>
-                            </Tooltip>
-                        </div>
+                        <Tooltip
+                            open={iconTooltipOpen}
+                            onOpenChange={setIconTooltipOpen}
+                        >
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="flex size-34 shrink-0 items-center justify-center rounded-xl border text-foreground transition-colors hover:bg-muted/40"
+                                    aria-label="Change icon"
+                                    onPointerEnter={() =>
+                                        setIconTooltipOpen(true)
+                                    }
+                                    onPointerLeave={() =>
+                                        setIconTooltipOpen(false)
+                                    }
+                                    onClick={() =>
+                                        setShowIconPicker(
+                                            (current) => !current,
+                                        )
+                                    }
+                                >
+                                    {selectedIcon && (
+                                        <Icon
+                                            iconNode={selectedIcon}
+                                            className="size-16 sm:size-20"
+                                        />
+                                    )}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Change icon</TooltipContent>
+                        </Tooltip>
                     ) : (
-                        <div className="flex w-28 shrink-0 items-center justify-center self-stretch rounded-xl border text-foreground sm:w-32">
+                        <div className="flex size-34 shrink-0 items-center justify-center rounded-xl border text-foreground">
                             {selectedIcon && (
                                 <Icon
                                     iconNode={selectedIcon}
