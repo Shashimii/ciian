@@ -44,6 +44,9 @@ Primary page actions for list/index screens live in the breadcrumb header bar (r
 
 Use the shared `DataTable` (`@/components/data-table`) for list indexes.
 
+- Search (default on): pass `searchPlaceholder`; mark searchable fields with `searchValue` on columns.
+- Sort: set `sortable` + `sortValue` on columns; header toggles ascending / descending.
+- Pagination: client-side by default (`pageSize`, default `10`) with Previous / Next and result range.
 - Selection (when needed): enable `selection` so the checkbox column is **first**.
 - Row delete (when needed): pass `onDelete`. The delete column has a **blank header**, a centered `Trash2` icon button (`text-destructive`, `hover:bg-destructive/10`), tooltip/`aria-label` **Delete**, and `stopPropagation` so it does not fire `onRowClick`.
 - Row publish (when needed): pass `onPublish` / `canPublish`. Unpublished rows use an `Upload` icon with tooltip/`aria-label` **Publish**. Published rows with pending `unpub_shape` changes use `isSync` so the action shows a `RefreshCw` icon with tooltip/`aria-label` **Sync**. Show for unpublished tables and for published tables with pending changes.
