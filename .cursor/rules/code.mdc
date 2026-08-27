@@ -53,13 +53,13 @@ Do **not** put platform models back in `App\Models\` root.
 
 ## Internal vs system table shapes
 
-- **Created systems:** `ciian_sys` + `ciian_sys_tbl` (`System` / `SystemTable`) — per-system table shapes (`system_id` required).
-- **Ciian + No System internal:** `ciian_int_tbl` (`InternalTable`) — Accounts shapes (`tag=ciian`) and user tables with **No System** (`tag=no_system`); seeded Accounts rows by `CiianInternalTableSeeder` (invoked from `SystemDefaultsSeeder`).
-- Rows use a `tag` column (DB default `ciian`) and an `icon` column (DB default `Sparkles`) so ownership/grouping and badge icons are data-driven — filter with `InternalTable::tagged($tag)`, do not hardcode table slugs.
+- **Created systems:** `ciian_sys` + `ciian_sys_tbl` (`System` / `SystemTable`) — **all user-created table shapes** (`system_id` required).
+- **Ciian internal (seeded only):** `ciian_int_tbl` (`InternalTable`) — platform Accounts shapes (`tag=ciian`) from `CiianInternalTableSeeder` (via `SystemDefaultsSeeder`). The Tables UI does **not** create rows here.
+- Rows on `ciian_int_tbl` use a `tag` column (DB default `ciian`) and an `icon` column (DB default `Sparkles`) so ownership/grouping and badge icons are data-driven — filter with `InternalTable::tagged($tag)`, do not hardcode table slugs.
 - Tables list also includes `ciian_sys_tbl` rows; those badges use the parent **system** icon, not `ciian_int_tbl.icon`.
-- Do **not** store Ciian / No System shapes in `ciian_sys` / `ciian_sys_tbl`.
+- Do **not** store user-created table shapes in `ciian_int_tbl`.
 - Both table stores use `status`, `unpub_shape`, and `pub_shape`. Physical Laravel platform tables stay migration-backed; `unpub_shape` updates are metadata until publish copies them to `pub_shape` and the Database Engine applies DDL.
-- On publish, Ciian creates the physical table (including FK constraints) and generates an Eloquent model under `App\Models\{System|Ciian|NoSystem}\` with `belongsTo` / inbound `hasMany` from foreign key columns.
+- On publish, Ciian creates the physical table (including FK constraints) and generates an Eloquent model under `App\Models\{System|Ciian}\` with `belongsTo` / inbound `hasMany` from foreign key columns.
 
 ## Middleware naming
 

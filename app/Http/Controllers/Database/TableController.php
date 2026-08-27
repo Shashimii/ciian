@@ -80,7 +80,7 @@ class TableController extends Controller
     }
 
     /**
-     * Update an internal (Ciian / No System) table draft.
+     * Update an internal (seeded Ciian) table draft.
      */
     public function updateInternal(
         UpdateTableRequest $request,

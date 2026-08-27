@@ -33,38 +33,23 @@ class TableIndexPresenter
     }
 
     /**
-     * @return list<array{value: string, label: string, icon: string}>
+     * Created systems available when creating a user table (ciian_sys_tbl).
+     *
+     * @return list<array{value: string, label: string, icon: string, internal: bool}>
      */
     public function systemOptions(): array
     {
-        $config = CiianConfig::query()->first();
-        $ciianSlug = $config?->sys_slug ?? InternalTable::TAG_CIIAN;
-
-        $options = [
-            [
-                'value' => $ciianSlug,
-                'label' => $config?->name ?? 'Ciian',
-                'icon' => $config?->icon ?? 'Sparkles',
-                'internal' => true,
-            ],
-            [
-                'value' => InternalTable::TAG_NO_SYSTEM,
-                'label' => 'No System',
-                'icon' => 'CircleDashed',
-                'internal' => true,
-            ],
-        ];
-
-        foreach (System::query()->orderBy('name')->get() as $system) {
-            $options[] = [
+        return System::query()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (System $system): array => [
                 'value' => $system->slug,
                 'label' => $system->name,
                 'icon' => $system->icon,
                 'internal' => false,
-            ];
-        }
-
-        return $options;
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -205,7 +190,8 @@ class TableIndexPresenter
             'type' => 'ciian',
             'label' => $config?->name ?? 'Ciian',
             'slug' => $ciianSlug,
-            'icon' => 'Sparkles',
+            'icon' => $config?->icon ?? 'Sparkles',
+            'color' => $config?->color ?? 'violet',
         ];
     }
 }

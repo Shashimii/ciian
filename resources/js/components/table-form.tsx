@@ -272,8 +272,8 @@ export default function TableForm({
     const form = useForm({
         name: table?.name ?? '',
         slug: table?.slug ?? '',
-        system: table?.system.slug ?? 'no_system',
-        icon: table?.icon ?? 'CircleDashed',
+        system: table?.system.slug ?? systems[0]?.value ?? '',
+        icon: table?.icon ?? 'Box',
         shape: {
             columns: table?.unpub_shape?.columns?.length
                 ? table.unpub_shape.columns
@@ -297,11 +297,11 @@ export default function TableForm({
     );
     const showIconEditor = isEdit
         ? table?.store === 'internal'
-        : (selectedSystem?.internal ?? true);
+        : false;
 
     const systemLabel = isEdit
         ? (table?.system.label ?? '')
-        : (selectedSystem?.label ?? 'No System');
+        : (selectedSystem?.label ?? '');
 
     const selectedIcon = resolveLucideIcon(
         showIconEditor ? form.data.icon : (table?.system.icon ?? selectedSystem?.icon ?? 'Sparkles'),

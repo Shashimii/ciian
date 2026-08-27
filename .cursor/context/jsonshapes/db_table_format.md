@@ -14,8 +14,8 @@ When you publish a table, Ciian reads this shape, updates the real database, and
 Related code:
 
 - `App\Models\Ciian\Core\CiianConfig` — platform `sys_slug` / branding config
-- `App\Models\Ciian\Database\InternalTable` — Ciian / No System table shapes
-- `App\Models\Ciian\System\*` — `System`, `SystemTable`
+- `App\Models\Ciian\Database\InternalTable` — seeded Ciian platform table shapes
+- `App\Models\Ciian\System\*` — `System`, `SystemTable` (user-created tables)
 - `App\Support\TableShapeBuilder` — builds and normalizes shapes
 - `App\Support\ColumnTypes` — allowed column types and which options each type supports
 
@@ -57,9 +57,8 @@ Real database table name in `snake_case`, e.g. `"users"`.
 **`tbl_sys`** (required)  
 Owning system slug:
 
-- `ciian_config.sys_slug` for Ciian internal tables in `ciian_int_tbl`
-- `"no_system"` for No System tables in `ciian_int_tbl`
-- a created system’s `slug` for rows in `ciian_sys_tbl`
+- `ciian_config.sys_slug` for seeded Ciian internal tables in `ciian_int_tbl`
+- a created system’s `slug` for user tables in `ciian_sys_tbl`
 
 **`columns`** (required)  
 Array of column objects (see next section).
@@ -399,7 +398,7 @@ No single `id`. The primary key is the pair of foreign keys:
 ## Rules to remember
 
 1. **`tbl_db_name`** must be a valid `snake_case` table name.
-2. **`tbl_sys`** must be the owning system slug (`ciian_config.sys_slug`, `no_system`, or a system’s `slug`).
+2. **`tbl_sys`** must be the owning system slug (`ciian_config.sys_slug` for seeded internals, or a created system’s `slug` for user tables).
 3. **Column `name`** values must be `snake_case`.
 4. **`type`** must be one of the keys in `ColumnTypes::DEFINITIONS`.
 5. This JSON is **schema only** — never put user row content here.

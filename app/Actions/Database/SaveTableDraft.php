@@ -16,9 +16,9 @@ class SaveTableDraft
     public function __construct(private TableShapeBuilder $shapes) {}
 
     /**
-     * Create a draft table row and store the normalized shape in unpub_shape.
+     * Create a user table draft on ciian_sys_tbl (requires a created system).
      *
-     * Ciian / No System → ciian_int_tbl; real systems → ciian_sys_tbl.
+     * Seeded platform shapes stay on ciian_int_tbl and are not created here.
      *
      * @param  array{
      *     name: string,
@@ -28,31 +28,19 @@ class SaveTableDraft
      *     shape: array<string, mixed>
      * }  $input
      */
-    public function create(array $input): InternalTable|SystemTable
+    public function create(array $input): SystemTable
     {
-        $destination = $this->resolveDestination($input['system']);
+        $system = $this->resolveCreatedSystem($input['system']);
         $shape = $this->buildShape(
             shape: $input['shape'],
             name: $input['name'],
             slug: $input['slug'],
-            tblSys: $destination['tbl_sys'],
+            tblSys: $system->slug,
         );
 
-        return DB::transaction(function () use ($input, $destination, $shape) {
-            if ($destination['store'] === 'internal') {
-                return InternalTable::query()->create([
-                    'name' => $input['name'],
-                    'slug' => $input['slug'],
-                    'tag' => $destination['tag'],
-                    'icon' => $input['icon'] ?? $destination['icon_default'],
-                    'status' => InternalTable::STATUS_UNPUBLISHED,
-                    'unpub_shape' => $shape,
-                    'pub_shape' => null,
-                ]);
-            }
-
+        return DB::transaction(function () use ($input, $system, $shape) {
             return SystemTable::query()->create([
-                'system_id' => $destination['system']->id,
+                'system_id' => $system->id,
                 'name' => $input['name'],
                 'slug' => $input['slug'],
                 'status' => SystemTable::STATUS_UNPUBLISHED,
@@ -125,53 +113,17 @@ class SaveTableDraft
         return $normalized;
     }
 
-    /**
-     * @return array{
-     *     store: 'internal',
-     *     tag: string,
-     *     tbl_sys: string,
-     *     icon_default: string
-     * }|array{
-     *     store: 'system',
-     *     system: System,
-     *     tbl_sys: string
-     * }
-     */
-    private function resolveDestination(string $system): array
+    private function resolveCreatedSystem(string $system): System
     {
-        if ($system === InternalTable::TAG_NO_SYSTEM) {
-            return [
-                'store' => 'internal',
-                'tag' => InternalTable::TAG_NO_SYSTEM,
-                'tbl_sys' => InternalTable::TAG_NO_SYSTEM,
-                'icon_default' => 'CircleDashed',
-            ];
-        }
-
-        $ciianSlug = $this->ciianSysSlug();
-
-        if ($system === InternalTable::TAG_CIIAN || $system === $ciianSlug) {
-            return [
-                'store' => 'internal',
-                'tag' => InternalTable::TAG_CIIAN,
-                'tbl_sys' => $ciianSlug,
-                'icon_default' => 'Sparkles',
-            ];
-        }
-
         $createdSystem = System::query()->where('slug', $system)->first();
 
         if ($createdSystem === null) {
             throw ValidationException::withMessages([
-                'system' => __('The selected system is invalid.'),
+                'system' => __('The selected system is invalid. Create a system first.'),
             ]);
         }
 
-        return [
-            'store' => 'system',
-            'system' => $createdSystem,
-            'tbl_sys' => $createdSystem->slug,
-        ];
+        return $createdSystem;
     }
 
     private function tblSysFor(InternalTable|SystemTable $table): string
