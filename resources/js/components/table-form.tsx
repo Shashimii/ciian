@@ -9,11 +9,13 @@ import {
 import type { DragEndEvent } from '@dnd-kit/core';
 import {
     arrayMove,
+    defaultAnimateLayoutChanges,
     SortableContext,
     sortableKeyboardCoordinates,
     useSortable,
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
+import type { AnimateLayoutChanges } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
     Link,
@@ -155,6 +157,9 @@ type SortableColumnRowProps = {
     onRemove: () => void;
 };
 
+const animateLayoutChanges: AnimateLayoutChanges = (args) =>
+    defaultAnimateLayoutChanges({ ...args, wasDragging: true });
+
 function SortableColumnRow({
     id,
     column,
@@ -171,7 +176,11 @@ function SortableColumnRow({
         transform,
         transition,
         isDragging,
-    } = useSortable({ id, disabled: locked });
+    } = useSortable({
+        id,
+        disabled: locked,
+        animateLayoutChanges,
+    });
 
     return (
         <div
@@ -185,7 +194,7 @@ function SortableColumnRow({
             className={cn(
                 'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm',
                 selected && 'border-primary bg-primary/5',
-                isDragging && 'z-10 bg-background shadow-md',
+                isDragging && 'relative z-10 bg-background opacity-90 shadow-md',
             )}
         >
             <button
@@ -258,6 +267,8 @@ export default function TableForm({
     const [jsonError, setJsonError] = useState<string | null>(null);
     const [jsonText, setJsonText] = useState('');
 
+    const createColumnKey = () => crypto.randomUUID();
+
     const form = useForm({
         name: table?.name ?? '',
         slug: table?.slug ?? '',
@@ -270,6 +281,13 @@ export default function TableForm({
             timestamps: table?.unpub_shape?.timestamps ?? true,
         } satisfies Pick<TableShape, 'columns' | 'timestamps'>,
     });
+
+    const [columnKeys, setColumnKeys] = useState<string[]>(() =>
+        (table?.unpub_shape?.columns?.length
+            ? table.unpub_shape.columns
+            : [defaultIdColumn()]
+        ).map(() => crypto.randomUUID()),
+    );
 
     const columns = form.data.shape.columns;
     const timestamps = form.data.shape.timestamps;
@@ -298,11 +316,6 @@ export default function TableForm({
     const selectedColumnLocked = selectedColumn
         ? isLockedIdColumn(selectedColumn)
         : false;
-
-    const columnIds = useMemo(
-        () => columns.map((_, index) => `column-${index}`),
-        [columns],
-    );
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -370,6 +383,7 @@ export default function TableForm({
             } satisfies TableColumnShape,
         ];
         setColumns(next);
+        setColumnKeys((keys) => [...keys, createColumnKey()]);
         setSelectedColumnIndex(next.length - 1);
     };
 
@@ -380,6 +394,7 @@ export default function TableForm({
 
         const next = columns.filter((_, columnIndex) => columnIndex !== index);
         setColumns(next);
+        setColumnKeys((keys) => keys.filter((_, keyIndex) => keyIndex !== index));
         setSelectedColumnIndex((current) => {
             if (current === index) {
                 return Math.max(0, index - 1);
@@ -396,8 +411,8 @@ export default function TableForm({
             return;
         }
 
-        const oldIndex = columnIds.indexOf(String(active.id));
-        const newIndex = columnIds.indexOf(String(over.id));
+        const oldIndex = columnKeys.indexOf(String(active.id));
+        const newIndex = columnKeys.indexOf(String(over.id));
 
         if (oldIndex < 0 || newIndex < 0) {
             return;
@@ -407,8 +422,8 @@ export default function TableForm({
             return;
         }
 
-        const next = arrayMove(columns, oldIndex, newIndex);
-        setColumns(next);
+        setColumns(arrayMove(columns, oldIndex, newIndex));
+        setColumnKeys((keys) => arrayMove(keys, oldIndex, newIndex));
         setSelectedColumnIndex(newIndex);
     };
 
@@ -442,6 +457,9 @@ export default function TableForm({
                 timestamps: next.timestamps,
             });
             clearFieldErrors(form, 'shape');
+            setColumnKeys((keys) =>
+                next.columns.map((_, index) => keys[index] ?? createColumnKey()),
+            );
 
             if (selectedColumnIndex >= next.columns.length) {
                 setSelectedColumnIndex(Math.max(0, next.columns.length - 1));
@@ -695,14 +713,14 @@ export default function TableForm({
                             onDragEnd={onDragEnd}
                         >
                             <SortableContext
-                                items={columnIds}
+                                items={columnKeys}
                                 strategy={verticalListSortingStrategy}
                             >
                                 <div className="space-y-2">
                                     {columns.map((column, index) => (
                                         <SortableColumnRow
-                                            key={columnIds[index]}
-                                            id={columnIds[index]}
+                                            key={columnKeys[index]}
+                                            id={columnKeys[index]}
                                             column={column}
                                             selected={
                                                 selectedColumnIndex === index
