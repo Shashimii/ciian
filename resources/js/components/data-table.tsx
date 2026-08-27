@@ -1,4 +1,6 @@
+import { RefreshCw, Trash2, Upload } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     Tooltip,
@@ -6,8 +8,6 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { RefreshCw, Trash2, Upload } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export type DataTableColumn<T> = {
     id: string;
@@ -55,6 +55,7 @@ export default function DataTable<T>({
 
         if (allSelected) {
             onSelectedKeysChange(new Set());
+
             return;
         }
 
