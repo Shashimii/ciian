@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { Database, LayoutGrid } from 'lucide-react';
+import { Boxes, Database, LayoutGrid } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -13,6 +13,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as systemsIndex } from '@/routes/systems';
 import { index as tablesIndex } from '@/routes/tables';
 import type { NavGroup } from '@/types';
 
@@ -24,6 +25,11 @@ const mainNavGroups: NavGroup[] = [
                 title: 'Dashboard',
                 href: dashboard(),
                 icon: LayoutGrid,
+            },
+            {
+                title: 'Systems',
+                href: systemsIndex(),
+                icon: Boxes,
             },
         ],
     },
