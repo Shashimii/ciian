@@ -537,44 +537,48 @@ export default function TableForm({
                 submit();
             }}
         >
-            <div className="rounded-xl border bg-card p-4 shadow-sm">
-                <div className="flex items-start gap-4">
+            <div>
+                <div className="flex items-stretch gap-4">
                     {showIconEditor ? (
-                        <Tooltip
-                            open={iconTooltipOpen}
-                            onOpenChange={setIconTooltipOpen}
-                        >
-                            <TooltipTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="flex size-16 shrink-0 items-center justify-center self-stretch rounded-xl border bg-muted/40 transition-colors hover:border-primary/40 hover:bg-muted"
-                                    aria-label="Change icon"
-                                    onPointerEnter={() =>
-                                        setIconTooltipOpen(true)
-                                    }
-                                    onPointerLeave={() =>
-                                        setIconTooltipOpen(false)
-                                    }
-                                    onClick={() =>
-                                        setShowIconPicker((current) => !current)
-                                    }
-                                >
-                                    {selectedIcon && (
-                                        <Icon
-                                            iconNode={selectedIcon}
-                                            className="size-8"
-                                        />
-                                    )}
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Change icon</TooltipContent>
-                        </Tooltip>
+                        <div className="flex w-28 shrink-0 self-stretch sm:w-32">
+                            <Tooltip
+                                open={iconTooltipOpen}
+                                onOpenChange={setIconTooltipOpen}
+                            >
+                                <TooltipTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className="flex h-full w-full items-center justify-center rounded-xl border text-foreground transition-colors hover:bg-muted/40"
+                                        aria-label="Change icon"
+                                        onPointerEnter={() =>
+                                            setIconTooltipOpen(true)
+                                        }
+                                        onPointerLeave={() =>
+                                            setIconTooltipOpen(false)
+                                        }
+                                        onClick={() =>
+                                            setShowIconPicker(
+                                                (current) => !current,
+                                            )
+                                        }
+                                    >
+                                        {selectedIcon && (
+                                            <Icon
+                                                iconNode={selectedIcon}
+                                                className="size-16 sm:size-20"
+                                            />
+                                        )}
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Change icon</TooltipContent>
+                            </Tooltip>
+                        </div>
                     ) : (
-                        <div className="flex size-16 shrink-0 items-center justify-center self-stretch rounded-xl border bg-muted/40">
+                        <div className="flex w-28 shrink-0 items-center justify-center self-stretch rounded-xl border text-foreground sm:w-32">
                             {selectedIcon && (
                                 <Icon
                                     iconNode={selectedIcon}
-                                    className="size-8"
+                                    className="size-16 sm:size-20"
                                 />
                             )}
                         </div>
