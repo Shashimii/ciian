@@ -13,7 +13,7 @@ Ciian - Setup
 
 Ciian - Database Engine
 - table schema saving (`unpub_shape`) on ciian_int_tbl / ciian_sys_tbl
-- Seeded Ciian Accounts → ciian_int_tbl; user-created tables → ciian_sys_tbl (require system_id)
+- Seeded + user-created Ciian tables → ciian_int_tbl; created-system tables → ciian_sys_tbl (require system_id)
 - table publish creates physical DDL (with FK constraints) and stores `pub_shape`
 - publish also generates Eloquent models + belongsTo/hasMany from foreignId columns
 - republish syncs physical DDL from `unpub_shape` when it differs from `pub_shape` (add/change/drop columns), then regenerates the model
@@ -21,7 +21,7 @@ Ciian - Database Engine
 - table delete drops physical table (when published), removes generated model, and blocks if other tables reference it
 - protected platform tables require root password confirmation to delete or republish
 - table schema modifying (edit unpub_shape; publish/republish applies DDL)
-- platform Accounts shapes (users / roles / permissions) stored in ciian_int_tbl (seeded only)
+- platform Accounts shapes (users / roles / permissions) stored in ciian_int_tbl (seeded); additional Ciian tables may be created via Tables UI
 - Tables module (/tables) for managing those shapes
 - error handling
 

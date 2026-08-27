@@ -3,6 +3,10 @@
 namespace App\Http\Requests\Database;
 
 use App\Http\Requests\Concerns\ValidatesTableColumns;
+use App\Models\Ciian\Core\CiianConfig;
+use App\Models\Ciian\Database\InternalTable;
+use App\Models\Ciian\System\System;
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -35,7 +39,11 @@ class StoreTableRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::exists('ciian_sys', 'slug'),
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (! is_string($value) || ! $this->isAllowedSystem($value)) {
+                        $fail(__('The selected system is invalid.'));
+                    }
+                },
             ],
             'icon' => ['nullable', 'string', 'max:255'],
             ...$this->tableShapeRules(),
@@ -51,13 +59,14 @@ class StoreTableRequest extends FormRequest
         }
     }
 
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
+    private function isAllowedSystem(string $value): bool
     {
-        return [
-            'system.exists' => __('Select a created system. Create one under Systems first.'),
-        ];
+        $ciianSlug = CiianConfig::query()->value('sys_slug') ?? InternalTable::TAG_CIIAN;
+
+        if (in_array($value, [InternalTable::TAG_CIIAN, $ciianSlug], true)) {
+            return true;
+        }
+
+        return System::query()->where('slug', $value)->exists();
     }
 }

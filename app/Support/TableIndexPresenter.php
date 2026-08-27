@@ -33,23 +33,35 @@ class TableIndexPresenter
     }
 
     /**
-     * Created systems available when creating a user table (ciian_sys_tbl).
+     * Systems available when creating a table: Ciian (internal) plus created systems.
      *
-     * @return list<array{value: string, label: string, icon: string, internal: bool}>
+     * @return list<array{value: string, label: string, icon: string, internal: bool, color?: string|null}>
      */
     public function systemOptions(): array
     {
-        return System::query()
-            ->orderBy('name')
-            ->get()
-            ->map(fn (System $system): array => [
+        $config = CiianConfig::query()->first();
+        $ciianSlug = $config?->sys_slug ?? InternalTable::TAG_CIIAN;
+
+        $options = [
+            [
+                'value' => $ciianSlug,
+                'label' => $config?->name ?? 'Ciian',
+                'icon' => $config?->icon ?? 'Sparkles',
+                'internal' => true,
+                'color' => $config?->color ?? 'violet',
+            ],
+        ];
+
+        foreach (System::query()->orderBy('name')->get() as $system) {
+            $options[] = [
                 'value' => $system->slug,
                 'label' => $system->name,
                 'icon' => $system->icon,
                 'internal' => false,
-            ])
-            ->values()
-            ->all();
+            ];
+        }
+
+        return $options;
     }
 
     /**

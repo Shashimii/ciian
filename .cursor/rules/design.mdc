@@ -120,8 +120,8 @@ Tags are always rendered as **pill badges** via `TagBadge` (`@/components/tag-ba
 - **No System** (`tag === 'no_system'`): muted badge + **CircleDashed** icon; UI label **No System** (legacy; not used for new creates).
 - **System tables** (`ciian_sys_tbl`): badge label is the system name; icon comes from the parent `System.icon` (via `getSystemIcon`).
 - **Internal tables** (`ciian_int_tbl`): badge label is `tag`; icon comes from the row’s `icon` column (default `Sparkles` for Ciian).
-- On create: System is selectable from **created systems only** (`ciian_sys`). On edit: System is **locked** (read-only badge).
-- **User-created tables** → `ciian_sys_tbl`. **Seeded Ciian Accounts** → `ciian_int_tbl`.
+- On create: System is selectable from **Ciian** + created systems (`ciian_sys`). On edit: System is **locked** (read-only badge).
+- **Ciian** (create or seeded) → `ciian_int_tbl`. **Created systems** → `ciian_sys_tbl`. **No System** is legacy only (not offered on create).
 - Systems index **Tag** column shows `TagBadge` (icon + name) for each row.
 - New table form uses a **column builder** (not raw JSON). Auto Increment `id` is always present and locked.
 
