@@ -27,6 +27,7 @@ class SystemDefaultsSeeder extends Seeder
             [
                 'name' => 'Ciian',
                 'icon' => 'Sparkles',
+                'color' => 'violet',
             ],
         );
     }

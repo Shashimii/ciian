@@ -24,6 +24,7 @@ class CiianConfigFactory extends Factory
             'name' => 'Ciian',
             'sys_slug' => 'ciian',
             'icon' => 'Sparkles',
+            'color' => 'violet',
         ];
     }
 }

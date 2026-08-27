@@ -13,10 +13,11 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $sys_slug
  * @property string $icon
+ * @property string $color
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'sys_slug', 'icon'])]
+#[Fillable(['name', 'sys_slug', 'icon', 'color'])]
 class CiianConfig extends Model
 {
     /** @use HasFactory<CiianConfigFactory> */
@@ -29,6 +30,7 @@ class CiianConfig extends Model
         'name' => 'Ciian',
         'sys_slug' => 'ciian',
         'icon' => 'Sparkles',
+        'color' => 'violet',
     ];
 
     /**

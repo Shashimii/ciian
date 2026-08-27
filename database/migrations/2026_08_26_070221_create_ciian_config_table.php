@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name')->default('Ciian');
             $table->string('sys_slug')->unique()->default('ciian');
             $table->string('icon')->default('Sparkles');
+            $table->string('color')->default('violet');
             $table->timestamps();
         });
     }
