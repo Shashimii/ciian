@@ -635,12 +635,14 @@ export default function TableForm({
                                                     (system) =>
                                                         system.value === value,
                                                 );
+
                                                 if (next) {
                                                     form.setData(
                                                         'icon',
                                                         next.icon,
                                                     );
                                                 }
+
                                                 clearFieldErrors(
                                                     form,
                                                     'system',
