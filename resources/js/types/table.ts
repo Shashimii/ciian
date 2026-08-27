@@ -28,6 +28,11 @@ export type TableShape = {
     primary?: string[];
 };
 
+export type RelationTableOption = {
+    label: string;
+    value: string;
+};
+
 export type TableRow = {
     key: string;
     store: 'internal' | 'system';

@@ -16,6 +16,7 @@ declare module '@inertiajs/core' {
             [key: string]: unknown;
         };
         layoutProps: {
+            breadcrumbs?: import('@/types/navigation').BreadcrumbItem[];
             headerActions?: React.ReactNode;
         };
     }
