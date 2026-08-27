@@ -1,12 +1,12 @@
-type Clearable = {
-    clearErrors: (...fields: string[]) => void;
+type Clearable<K extends string = string> = {
+    clearErrors: (...fields: K[]) => void;
 };
 
-export function clearFieldErrors(
-    form: Clearable,
-    ...fields: Array<string | undefined | null>
+export function clearFieldErrors<K extends string>(
+    form: Clearable<K>,
+    ...fields: Array<K | undefined | null>
 ): void {
-    const keys = fields.filter((field): field is string => Boolean(field));
+    const keys = fields.filter((field): field is K => field != null && field !== '');
 
     if (keys.length > 0) {
         form.clearErrors(...keys);
