@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\ColumnDefinition;
+use Illuminate\Database\Schema\ForeignIdColumnDefinition;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 use RuntimeException;
@@ -89,31 +90,41 @@ class ApplyTableSchema
         $added = $toColumns->keys()->diff($fromColumns->keys());
         $changed = $toColumns->keys()
             ->intersect($fromColumns->keys())
-            ->filter(fn (string $name): bool => $fromColumns[$name] !== $toColumns[$name]);
+            ->filter(fn (string $name): bool => $this->columnDiffers($fromColumns[$name], $toColumns[$name]));
 
-        Schema::table($tableName, function (Blueprint $table) use ($fromColumns, $dropped, $changed): void {
+        // Foreign keys must go before the column they sit on is dropped or modified.
+        // Which constraints exist is read from the database, not from the stored shape:
+        // DDL is not transactional here, so a partly-applied earlier sync can leave the
+        // two disagreeing, and dropping an absent constraint aborts the whole publish.
+        $constrainedColumns = $this->foreignKeyColumns($tableName);
+
+        Schema::table($tableName, function (Blueprint $table) use ($dropped, $changed, $constrainedColumns): void {
             foreach ($dropped->merge($changed) as $name) {
-                $previous = $fromColumns[$name] ?? null;
-
-                if (is_array($previous) && ColumnTypes::isForeignKey($previous['type'] ?? '')) {
+                if (in_array($name, $constrainedColumns, true)) {
                     $table->dropForeign([$name]);
                 }
             }
-
-            foreach ($dropped as $name) {
-                $table->dropColumn($name);
-            }
-
-            foreach ($changed as $name) {
-                $table->dropColumn($name);
-            }
         });
 
-        Schema::table($tableName, function (Blueprint $table) use ($toColumns, $added, $changed): void {
-            foreach ($added->merge($changed) as $name) {
-                $this->addColumn($table, $toColumns[$name]);
-            }
-        });
+        // Only columns leaving the shape are dropped; their data is discarded.
+        if ($dropped->isNotEmpty()) {
+            Schema::table($tableName, function (Blueprint $table) use ($dropped): void {
+                $table->dropColumn($dropped->all());
+            });
+        }
+
+        if ($added->isNotEmpty()) {
+            Schema::table($tableName, function (Blueprint $table) use ($toColumns, $added): void {
+                foreach ($added as $name) {
+                    $this->addColumn($table, $toColumns[$name]);
+                }
+            });
+        }
+
+        // Columns that stay are modified in place so their existing data survives.
+        foreach ($changed as $name) {
+            $this->changeColumn($tableName, $fromColumns[$name], $toColumns[$name]);
+        }
 
         $fromTimestamps = (bool) ($from['timestamps'] ?? true);
         $toTimestamps = (bool) ($to['timestamps'] ?? true);
@@ -130,9 +141,203 @@ class ApplyTableSchema
     }
 
     /**
+     * Column names that a sync from one shape to another would drop, discarding their data.
+     *
+     * @param  array<string, mixed>  $from
+     * @param  array<string, mixed>  $to
+     * @return list<string>
+     */
+    public function droppedColumns(array $from, array $to): array
+    {
+        if ($from === [] || ! Schema::hasTable($this->shapes->physicalTableName($from))) {
+            return [];
+        }
+
+        $from = $this->shapes->normalize($from);
+        $to = $this->shapes->normalize($to);
+
+        $names = static fn (array $columns): array => array_map(
+            static fn (array $column): string => (string) ($column['name'] ?? ''),
+            $columns,
+        );
+
+        return array_values(array_diff($names($from['columns']), $names($to['columns'])));
+    }
+
+    /**
+     * Modify an existing column in place, preserving the data it already holds.
+     *
+     * @param  array<string, mixed>  $from
+     * @param  array<string, mixed>  $to
+     */
+    private function changeColumn(string $tableName, array $from, array $to): void
+    {
+        $name = (string) $to['name'];
+        $live = $this->liveIndexes($tableName)[$name] ?? null;
+
+        Schema::table($tableName, function (Blueprint $table) use ($from, $to, $name, $live): void {
+            // change() never touches indexes, so they are reconciled separately.
+            $this->syncIndexes($table, $name, $live, $this->indexStateFor($to));
+
+            if ($this->onlyIndexesDiffer($from, $to)) {
+                return;
+            }
+
+            $this->addColumn($table, $to, change: true);
+        });
+    }
+
+    /**
+     * Reconcile one column's index against what the database actually has.
+     *
+     * @param  array{state: 'unique'|'index', name: string}|null  $live
+     * @param  'unique'|'index'|'none'  $wanted
+     */
+    private function syncIndexes(Blueprint $table, string $name, ?array $live, string $wanted): void
+    {
+        if (($live['state'] ?? 'none') === $wanted) {
+            return;
+        }
+
+        // Dropped by its real name: an index backing a foreign key is named
+        // <table>_<column>_foreign, not the conventional <table>_<column>_index.
+        if ($live !== null) {
+            match ($live['state']) {
+                'unique' => $table->dropUnique($live['name']),
+                'index' => $table->dropIndex($live['name']),
+            };
+        }
+
+        match ($wanted) {
+            'unique' => $table->unique($name),
+            'index' => $table->index($name),
+            default => null,
+        };
+    }
+
+    /**
+     * Single-column indexes the table actually carries, keyed by column name.
+     *
+     * @return array<string, array{state: 'unique'|'index', name: string}>
+     */
+    private function liveIndexes(string $tableName): array
+    {
+        $states = [];
+
+        foreach (Schema::getIndexes($tableName) as $index) {
+            if ($index['primary'] || count($index['columns']) !== 1) {
+                continue;
+            }
+
+            $column = (string) $index['columns'][0];
+
+            // A unique index outranks a plain one when a column carries both.
+            if (($states[$column]['state'] ?? null) === 'unique') {
+                continue;
+            }
+
+            $states[$column] = [
+                'state' => $index['unique'] ? 'unique' : 'index',
+                'name' => (string) $index['name'],
+            ];
+        }
+
+        return $states;
+    }
+
+    /**
+     * Columns the table actually has a foreign key on.
+     *
+     * @return list<string>
+     */
+    private function foreignKeyColumns(string $tableName): array
+    {
+        $columns = [];
+
+        foreach (Schema::getForeignKeys($tableName) as $foreignKey) {
+            foreach ($foreignKey['columns'] as $column) {
+                $columns[] = (string) $column;
+            }
+        }
+
+        return array_values(array_unique($columns));
+    }
+
+    /**
+     * Unique wins over indexed, mirroring how addColumn() builds a new column.
+     *
+     * @param  array<string, mixed>  $column
+     * @return 'unique'|'index'|'none'
+     */
+    private function indexStateFor(array $column): string
+    {
+        if ($column['unique'] ?? false) {
+            return 'unique';
+        }
+
+        if ($column['indexed'] ?? false) {
+            return 'index';
+        }
+
+        return 'none';
+    }
+
+    /**
+     * @param  array<string, mixed>  $from
+     * @param  array<string, mixed>  $to
+     */
+    private function columnDiffers(array $from, array $to): bool
+    {
+        return $this->canonicalColumn($from) !== $this->canonicalColumn($to);
+    }
+
+    /**
+     * Whether the only difference is index membership, which needs no column change.
+     *
+     * @param  array<string, mixed>  $from
+     * @param  array<string, mixed>  $to
+     */
+    private function onlyIndexesDiffer(array $from, array $to): bool
+    {
+        $strip = function (array $column): array {
+            $column = $this->canonicalColumn($column);
+
+            foreach (ColumnTypes::UNIVERSAL_OPTIONS as $option) {
+                unset($column[$option]);
+            }
+
+            return $column;
+        };
+
+        return $strip($from) === $strip($to);
+    }
+
+    /**
+     * Fill implied defaults and sort keys so equivalent columns compare equal.
+     *
+     * Without this, a column whose `unique` key is absent differs from the same
+     * column carrying `unique: false`, and a no-op edit would rewrite it.
+     *
+     * @param  array<string, mixed>  $column
+     * @return array<string, mixed>
+     */
+    private function canonicalColumn(array $column): array
+    {
+        foreach (ColumnTypes::UNIVERSAL_OPTIONS as $option) {
+            $column[$option] = (bool) ($column[$option] ?? false);
+        }
+
+        $column['nullable'] = (bool) ($column['nullable'] ?? false);
+
+        ksort($column);
+
+        return $column;
+    }
+
+    /**
      * @param  array<string, mixed>  $column
      */
-    private function addColumn(Blueprint $table, array $column): void
+    private function addColumn(Blueprint $table, array $column, bool $change = false): void
     {
         $type = (string) ($column['type'] ?? '');
         $name = (string) ($column['name'] ?? '');
@@ -167,10 +372,15 @@ class ApplyTableSchema
             $definition->useCurrentOnUpdate();
         }
 
-        if (($column['unique'] ?? false)) {
-            $definition->unique();
-        } elseif (($column['indexed'] ?? false)) {
-            $definition->index();
+        // When changing, syncIndexes() owns index membership; change() ignores it anyway.
+        if (! $change) {
+            if (($column['unique'] ?? false)) {
+                $definition->unique();
+            } elseif (($column['indexed'] ?? false)) {
+                $definition->index();
+            }
+        } else {
+            $definition->change();
         }
 
         if (ColumnTypes::isForeignKey($type)) {
@@ -319,13 +529,22 @@ class ApplyTableSchema
             );
         }
 
-        $definition->constrained($matches[1], $matches[2]);
+        if (! $definition instanceof ForeignIdColumnDefinition) {
+            throw new InvalidArgumentException(
+                "Foreign key [{$column['name']}] must be built from a foreign key column type.",
+            );
+        }
+
+        // constrained() returns the ForeignKeyDefinition. The on-delete action belongs on
+        // that, not on the column: ColumnDefinition is a bare Fluent, so calling it there
+        // just sets an unused attribute and the ON DELETE clause is silently dropped.
+        $foreign = $definition->constrained($matches[1], $matches[2]);
 
         match ($column['on_delete'] ?? 'restrict') {
-            'cascade' => $definition->cascadeOnDelete(),
-            'set_null' => $definition->nullOnDelete(),
-            'no_action' => $definition->noActionOnDelete(),
-            default => $definition->restrictOnDelete(),
+            'cascade' => $foreign->cascadeOnDelete(),
+            'set_null' => $foreign->nullOnDelete(),
+            'no_action' => $foreign->noActionOnDelete(),
+            default => $foreign->restrictOnDelete(),
         };
     }
 }
