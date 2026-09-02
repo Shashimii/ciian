@@ -52,6 +52,27 @@ Use the shared `DataTable` (`@/components/data-table`) for list indexes.
 - Prefer `onRowClick` to open edit in a `FormSidebar` rather than a separate edit icon column.
 - Do **not** use `window.confirm` / `alert` for delete — use `ConfirmDialog`.
 
+## Processing feedback (required for every async row action)
+
+Any row action that triggers a server round-trip (publish, sync, delete, and
+anything added later) must give the user all three of these, matching the
+existing `onPublish`/`publishingKey` and `onDelete`/`deletingKey` pattern in
+`DataTable`:
+
+1. **Disable while in flight.** Track the acting row's key in page state (e.g.
+   `deletingKey`) and pass it to `DataTable`. Disable every row's trigger for
+   that action while any one is in flight — DDL-backed actions on this table
+   are not safe to run concurrently — and swap the acting row's icon for a
+   spinning `Loader2` (`animate-spin`).
+2. **A loading toast**, started in the request's `onStart` and dismissed in
+   `onFinish` (`toast.loading('Deleting …')`, store the id, `toast.dismiss(id)`).
+3. **Errors surfaced**, not swallowed — route the request's `onError` through
+   the page's `showError` helper (short message → toast, long → modal with
+   **View**), never leave a failed action with no visible feedback.
+
+Add a new `<action>Key` prop to `DataTable` (defaulting to `null`) for each
+new async row action, mirroring `publishingKey`/`deletingKey` exactly.
+
 ## Modals & confirmations
 
 Use `Modal` / `ConfirmDialog` from `@/components/modal`. Do **not** use browser `confirm()` or `alert()`. Prefer these over raw `Dialog` for app-facing prompts.

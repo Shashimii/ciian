@@ -50,6 +50,8 @@ export type TableRow = {
     has_pending_changes: boolean;
     can_publish: boolean;
     is_sync: boolean;
+    /** False for protected platform tables (users, roles, permissions). */
+    can_delete: boolean;
     /** Columns a sync would drop, discarding their data. Empty unless a sync is pending. */
     dropped_columns: string[];
     system: SystemBadge;

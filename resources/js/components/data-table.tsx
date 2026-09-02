@@ -4,6 +4,7 @@ import {
     ArrowUpDown,
     ChevronLeft,
     ChevronRight,
+    Loader2,
     RefreshCw,
     Search,
     Trash2,
@@ -45,6 +46,9 @@ type Props<T> = {
     selectedKeys?: Set<string>;
     onSelectedKeysChange?: (keys: Set<string>) => void;
     onDelete?: (row: T) => void;
+    canDelete?: (row: T) => boolean;
+    /** Row key currently deleting; every row's delete action is disabled and it spins. */
+    deletingKey?: string | null;
     onPublish?: (row: T) => void;
     canPublish?: (row: T) => boolean;
     isSync?: (row: T) => boolean;
@@ -95,6 +99,8 @@ export default function DataTable<T>({
     selectedKeys = new Set(),
     onSelectedKeysChange,
     onDelete,
+    canDelete,
+    deletingKey = null,
     onPublish,
     canPublish,
     isSync,
@@ -425,25 +431,51 @@ export default function DataTable<T>({
                                                     event.stopPropagation()
                                                 }
                                             >
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-8 text-destructive hover:bg-destructive/10"
-                                                            aria-label="Delete"
-                                                            onClick={() =>
-                                                                onDelete(row)
-                                                            }
-                                                        >
-                                                            <Trash2 className="size-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        Delete
-                                                    </TooltipContent>
-                                                </Tooltip>
+                                                {(canDelete?.(row) ?? true) &&
+                                                    (() => {
+                                                        const busy =
+                                                            deletingKey ===
+                                                            getRowKey(row);
+                                                        const label = busy
+                                                            ? 'Deleting…'
+                                                            : 'Delete';
+
+                                                        return (
+                                                            <Tooltip>
+                                                                <TooltipTrigger
+                                                                    asChild
+                                                                >
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="size-8 text-destructive hover:bg-destructive/10"
+                                                                        aria-label={
+                                                                            label
+                                                                        }
+                                                                        disabled={
+                                                                            deletingKey !==
+                                                                            null
+                                                                        }
+                                                                        onClick={() =>
+                                                                            onDelete(
+                                                                                row,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {busy ? (
+                                                                            <Loader2 className="size-4 animate-spin" />
+                                                                        ) : (
+                                                                            <Trash2 className="size-4" />
+                                                                        )}
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    {label}
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        );
+                                                    })()}
                                             </td>
                                         )}
                                     </tr>

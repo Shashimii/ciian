@@ -18,10 +18,12 @@ import { Icon } from '@/components/ui/icon';
 import { resolveLucideIcon } from '@/lib/lucide-icons';
 import { create, index as tablesIndex } from '@/routes/tables';
 import {
+    destroy as destroyInternal,
     edit as editInternal,
     publish as publishInternal,
 } from '@/routes/tables/internal';
 import {
+    destroy as destroySystem,
     edit as editSystem,
     publish as publishSystem,
 } from '@/routes/tables/system';
@@ -45,6 +47,9 @@ export default function TableIndex({ tables }: Props) {
     const [publishingKey, setPublishingKey] = useState<string | null>(null);
     const [errorOpen, setErrorOpen] = useState(false);
     const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<TableRow | null>(null);
+    const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
     // Keep the payload while the dialog fades out so its content stays stable.
     useEffect(() => {
@@ -67,6 +72,17 @@ export default function TableIndex({ tables }: Props) {
 
         return () => clearTimeout(timer);
     }, [errorOpen]);
+
+    // Keep the payload while the dialog fades out so its content stays stable.
+    useEffect(() => {
+        if (deleteDialogOpen) {
+            return;
+        }
+
+        const timer = setTimeout(() => setPendingDelete(null), 200);
+
+        return () => clearTimeout(timer);
+    }, [deleteDialogOpen]);
 
     useEffect(() => {
         setLayoutProps({
@@ -229,6 +245,47 @@ export default function TableIndex({ tables }: Props) {
         setDropDialogOpen(false);
     };
 
+    const deleteTable = (table: TableRow) => {
+        setPendingDelete(table);
+        setDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = () => {
+        const table = pendingDelete;
+
+        if (!table) {
+            return;
+        }
+
+        let toastId: string | number | undefined;
+
+        router.delete(
+            table.store === 'internal'
+                ? destroyInternal.url(table.id)
+                : destroySystem.url(table.id),
+            {
+                preserveScroll: true,
+                onStart: () => {
+                    setDeletingKey(table.key);
+                    toastId = toast.loading(`Deleting ${table.name}…`);
+                },
+                onError: (errors) => {
+                    showError(
+                        `${table.name} could not be deleted`,
+                        errors.table ??
+                            'The database rejected the change. No reason was returned.',
+                    );
+                },
+                onFinish: () => {
+                    setDeletingKey(null);
+                    toast.dismiss(toastId);
+                },
+            },
+        );
+
+        setDeleteDialogOpen(false);
+    };
+
     return (
         <>
             <Head title="Tables" />
@@ -245,6 +302,9 @@ export default function TableIndex({ tables }: Props) {
                     canPublish={(row) => row.can_publish}
                     isSync={(row) => row.is_sync}
                     publishingKey={publishingKey}
+                    onDelete={deleteTable}
+                    canDelete={(row) => row.can_delete}
+                    deletingKey={deletingKey}
                 />
             </div>
 
@@ -274,6 +334,20 @@ export default function TableIndex({ tables }: Props) {
                     </ul>
                 )}
             </ConfirmDialog>
+
+            <ConfirmDialog
+                open={deleteDialogOpen}
+                onOpenChange={setDeleteDialogOpen}
+                variant="destructive"
+                title="Delete this table?"
+                description={
+                    pendingDelete
+                        ? `${pendingDelete.name} and all its data will be permanently deleted. This cannot be undone.`
+                        : undefined
+                }
+                confirmLabel="Delete"
+                onConfirm={confirmDelete}
+            />
 
             <Modal
                 open={errorOpen}
