@@ -48,6 +48,8 @@ type Props<T> = {
     onPublish?: (row: T) => void;
     canPublish?: (row: T) => boolean;
     isSync?: (row: T) => boolean;
+    /** Row key currently publishing; its action is disabled and spins. */
+    publishingKey?: string | null;
     searchable?: boolean;
     searchPlaceholder?: string;
     pageSize?: number;
@@ -96,6 +98,7 @@ export default function DataTable<T>({
     onPublish,
     canPublish,
     isSync,
+    publishingKey = null,
     searchable = true,
     searchPlaceholder = 'Search…',
     pageSize = 10,
@@ -122,7 +125,9 @@ export default function DataTable<T>({
             searchColumns.some((column) => {
                 const value = column.searchValue?.(row);
 
-                return value != null && String(value).toLowerCase().includes(query);
+                return (
+                    value != null && String(value).toLowerCase().includes(query)
+                );
             }),
         );
     }, [columns, rows, search]);
@@ -205,7 +210,8 @@ export default function DataTable<T>({
         setPage(1);
     };
 
-    const rangeStart = sortedRows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const rangeStart =
+        sortedRows.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
     const rangeEnd = Math.min(currentPage * pageSize, sortedRows.length);
 
     return (
@@ -261,7 +267,9 @@ export default function DataTable<T>({
                                             <button
                                                 type="button"
                                                 className="inline-flex items-center gap-1.5 rounded-sm transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                                                onClick={() => toggleSort(column)}
+                                                onClick={() =>
+                                                    toggleSort(column)
+                                                }
                                                 aria-label={`Sort by ${column.header}`}
                                             >
                                                 {column.header}
@@ -353,43 +361,61 @@ export default function DataTable<T>({
                                                     event.stopPropagation()
                                                 }
                                             >
-                                                {canPublish?.(row) && (
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                type="button"
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="size-8"
-                                                                aria-label={
-                                                                    isSync?.(
-                                                                        row,
-                                                                    )
-                                                                        ? 'Sync'
-                                                                        : 'Publish'
-                                                                }
-                                                                onClick={() =>
-                                                                    onPublish(
-                                                                        row,
-                                                                    )
-                                                                }
-                                                            >
-                                                                {isSync?.(
-                                                                    row,
-                                                                ) ? (
-                                                                    <RefreshCw className="size-4" />
-                                                                ) : (
-                                                                    <Upload className="size-4" />
-                                                                )}
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            {isSync?.(row)
-                                                                ? 'Sync'
-                                                                : 'Publish'}
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                )}
+                                                {canPublish?.(row) &&
+                                                    (() => {
+                                                        const busy =
+                                                            publishingKey ===
+                                                            getRowKey(row);
+                                                        const label = isSync?.(
+                                                            row,
+                                                        )
+                                                            ? 'Sync'
+                                                            : 'Publish';
+
+                                                        return (
+                                                            <Tooltip>
+                                                                <TooltipTrigger
+                                                                    asChild
+                                                                >
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="size-8"
+                                                                        aria-label={
+                                                                            busy
+                                                                                ? `${label}ing…`
+                                                                                : label
+                                                                        }
+                                                                        disabled={
+                                                                            publishingKey !==
+                                                                            null
+                                                                        }
+                                                                        onClick={() =>
+                                                                            onPublish(
+                                                                                row,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {busy ? (
+                                                                            <RefreshCw className="size-4 animate-spin" />
+                                                                        ) : isSync?.(
+                                                                              row,
+                                                                          ) ? (
+                                                                            <RefreshCw className="size-4" />
+                                                                        ) : (
+                                                                            <Upload className="size-4" />
+                                                                        )}
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    {busy
+                                                                        ? `${label}ing…`
+                                                                        : label}
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        );
+                                                    })()}
                                             </td>
                                         )}
                                         {onDelete && (
@@ -441,7 +467,9 @@ export default function DataTable<T>({
                         variant="outline"
                         size="sm"
                         disabled={currentPage <= 1}
-                        onClick={() => setPage((current) => Math.max(1, current - 1))}
+                        onClick={() =>
+                            setPage((current) => Math.max(1, current - 1))
+                        }
                         aria-label="Previous page"
                     >
                         <ChevronLeft className="size-4" />
@@ -456,7 +484,9 @@ export default function DataTable<T>({
                         size="sm"
                         disabled={currentPage >= pageCount}
                         onClick={() =>
-                            setPage((current) => Math.min(pageCount, current + 1))
+                            setPage((current) =>
+                                Math.min(pageCount, current + 1),
+                            )
                         }
                         aria-label="Next page"
                     >
