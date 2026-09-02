@@ -34,15 +34,14 @@ import InputError from '@/components/input-error';
 import JsonShapeEditor from '@/components/json-shape-editor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Combobox } from '@/components/ui/combobox';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
-    SelectGroup,
     SelectItem,
-    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
@@ -129,7 +128,11 @@ function columnsFromShape(raw: unknown): {
 
     const normalized = columns
         .filter((column): column is Record<string, unknown> => {
-            return Boolean(column) && typeof column === 'object' && !Array.isArray(column);
+            return (
+                Boolean(column) &&
+                typeof column === 'object' &&
+                !Array.isArray(column)
+            );
         })
         .map((column) => ({
             ...(column as TableColumnShape),
@@ -194,7 +197,8 @@ function SortableColumnRow({
             className={cn(
                 'flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm',
                 selected && 'border-primary bg-primary/5',
-                isDragging && 'relative z-10 bg-background opacity-90 shadow-md',
+                isDragging &&
+                    'relative z-10 bg-background opacity-90 shadow-md',
             )}
         >
             <button
@@ -310,7 +314,14 @@ export default function TableForm({
     );
 
     const typeGroups = useMemo(
-        () => groupedColumnTypes(columnTypes),
+        () =>
+            groupedColumnTypes(columnTypes).map((group) => ({
+                label: group.label,
+                options: group.types.map((type) => ({
+                    value: type.value,
+                    label: type.label,
+                })),
+            })),
         [columnTypes],
     );
 
@@ -396,7 +407,9 @@ export default function TableForm({
 
         const next = columns.filter((_, columnIndex) => columnIndex !== index);
         setColumns(next);
-        setColumnKeys((keys) => keys.filter((_, keyIndex) => keyIndex !== index));
+        setColumnKeys((keys) =>
+            keys.filter((_, keyIndex) => keyIndex !== index),
+        );
         setSelectedColumnIndex((current) => {
             if (current === index) {
                 return Math.max(0, index - 1);
@@ -460,7 +473,9 @@ export default function TableForm({
             });
             clearFieldErrors(form, 'shape');
             setColumnKeys((keys) =>
-                next.columns.map((_, index) => keys[index] ?? createColumnKey()),
+                next.columns.map(
+                    (_, index) => keys[index] ?? createColumnKey(),
+                ),
             );
 
             if (selectedColumnIndex >= next.columns.length) {
@@ -503,9 +518,7 @@ export default function TableForm({
 
     useEffect(() => {
         const canSubmit =
-            !form.processing &&
-            !jsonError &&
-            (!isEdit || isDirty);
+            !form.processing && !jsonError && (!isEdit || isDirty);
 
         setLayoutProps({
             headerActions: (
@@ -558,9 +571,7 @@ export default function TableForm({
                                         setIconTooltipOpen(false)
                                     }
                                     onClick={() =>
-                                        setShowIconPicker(
-                                            (current) => !current,
-                                        )
+                                        setShowIconPicker((current) => !current)
                                     }
                                 >
                                     {selectedIcon && (
@@ -755,9 +766,7 @@ export default function TableForm({
                                             onSelect={() =>
                                                 setSelectedColumnIndex(index)
                                             }
-                                            onRemove={() =>
-                                                removeColumn(index)
-                                            }
+                                            onRemove={() => removeColumn(index)}
                                         />
                                     ))}
                                 </div>
@@ -806,39 +815,20 @@ export default function TableForm({
 
                                 <div className="space-y-2">
                                     <Label htmlFor="column-type">Type</Label>
-                                    <Select
+                                    <Combobox
+                                        id="column-type"
+                                        groups={typeGroups}
                                         value={selectedColumn.type}
                                         disabled={selectedColumnLocked}
+                                        placeholder="Select Column Type"
+                                        searchPlaceholder="Search types…"
+                                        emptyMessage="No matching column type."
                                         onValueChange={(value) =>
                                             updateColumn(selectedColumnIndex, {
                                                 type: value,
                                             })
                                         }
-                                    >
-                                        <SelectTrigger
-                                            id="column-type"
-                                            className="w-full"
-                                        >
-                                            <SelectValue placeholder="Select Column Type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {typeGroups.map((group) => (
-                                                <SelectGroup key={group.label}>
-                                                    <SelectLabel>
-                                                        {group.label}
-                                                    </SelectLabel>
-                                                    {group.types.map((type) => (
-                                                        <SelectItem
-                                                            key={type.value}
-                                                            value={type.value}
-                                                        >
-                                                            {type.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectGroup>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    />
                                 </div>
 
                                 {selectedColumnLocked ? (
