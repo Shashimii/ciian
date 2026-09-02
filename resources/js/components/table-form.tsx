@@ -87,6 +87,19 @@ const defaultIdColumn = (): TableColumnShape => ({
     auto_increment: true,
 });
 
+/**
+ * Freeze a stable `column_id` onto every column so a later rename (which only
+ * changes `name`) can still be matched to the same column on publish. Falls
+ * back to the current name, matching the server's own fallback — a fresh
+ * random id is only needed for genuinely new columns (see `addColumn`).
+ */
+function withColumnIds(columns: TableColumnShape[]): TableColumnShape[] {
+    return columns.map((column) => ({
+        ...column,
+        column_id: column.column_id || column.name,
+    }));
+}
+
 function slugify(value: string): string {
     return value
         .trim()
@@ -145,7 +158,7 @@ function columnsFromShape(raw: unknown): {
     }
 
     return {
-        columns: normalized,
+        columns: withColumnIds(normalized),
         timestamps: Boolean(shape.timestamps ?? true),
     };
 }
@@ -273,24 +286,25 @@ export default function TableForm({
 
     const createColumnKey = () => crypto.randomUUID();
 
+    const initialColumns = withColumnIds(
+        table?.unpub_shape?.columns?.length
+            ? table.unpub_shape.columns
+            : [defaultIdColumn()],
+    );
+
     const form = useForm({
         name: table?.name ?? '',
         slug: table?.slug ?? '',
         system: table?.system.slug ?? systems[0]?.value ?? '',
         icon: table?.icon ?? systems[0]?.icon ?? 'Sparkles',
         shape: {
-            columns: table?.unpub_shape?.columns?.length
-                ? table.unpub_shape.columns
-                : [defaultIdColumn()],
+            columns: initialColumns,
             timestamps: table?.unpub_shape?.timestamps ?? true,
         } satisfies Pick<TableShape, 'columns' | 'timestamps'>,
     });
 
     const [columnKeys, setColumnKeys] = useState<string[]>(() =>
-        (table?.unpub_shape?.columns?.length
-            ? table.unpub_shape.columns
-            : [defaultIdColumn()]
-        ).map(() => crypto.randomUUID()),
+        initialColumns.map(() => crypto.randomUUID()),
     );
 
     const columns = form.data.shape.columns;
@@ -390,6 +404,10 @@ export default function TableForm({
         const next = [
             ...columns,
             {
+                // A real random id: the name starts blank, so falling back to it
+                // (like withColumnIds does for existing columns) would risk two
+                // freshly-added blank columns colliding on the same identity.
+                column_id: crypto.randomUUID(),
                 name: '',
                 type: 'string',
                 nullable: true,

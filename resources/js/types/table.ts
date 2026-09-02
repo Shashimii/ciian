@@ -7,6 +7,11 @@ export type SystemBadge = {
 };
 
 export type TableColumnShape = {
+    /**
+     * Stable identity across renames. Falls back to `name` on the server when absent,
+     * so legacy shapes keep matching by name until a rename freezes a real id onto them.
+     */
+    column_id?: string;
     name: string;
     type: string;
     nullable?: boolean;

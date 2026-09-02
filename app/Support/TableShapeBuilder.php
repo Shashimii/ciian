@@ -118,6 +118,7 @@ class TableShapeBuilder
         $name = (string) ($column['name'] ?? '');
 
         $normalized = [
+            'column_id' => $this->resolveColumnId($column, $name),
             'name' => $name,
             'type' => $type,
         ];
@@ -229,10 +230,12 @@ class TableShapeBuilder
         }
 
         $names = [];
+        $columnIds = [];
 
         foreach ($shape['columns'] as $index => $column) {
             $name = $column['name'] ?? '';
             $type = $column['type'] ?? '';
+            $columnId = $column['column_id'] ?? '';
 
             if ($name === '' || ! $this->isSnakeCaseIdentifier($name)) {
                 throw new InvalidArgumentException("Column at index {$index} requires a snake_case name.");
@@ -246,7 +249,12 @@ class TableShapeBuilder
                 throw new InvalidArgumentException("Duplicate column name [{$name}].");
             }
 
+            if (isset($columnIds[$columnId])) {
+                throw new InvalidArgumentException("Column [{$name}] has a duplicate column_id.");
+            }
+
             $names[$name] = true;
+            $columnIds[$columnId] = true;
 
             if (ColumnTypes::isForeignKey($type)) {
                 $references = $column['references'] ?? null;
@@ -282,6 +290,23 @@ class TableShapeBuilder
                 }
             }
         }
+    }
+
+    /**
+     * A column's stable identity across renames, independent of its current `name`.
+     *
+     * Falls back to the current name when no explicit id was submitted, so shapes
+     * saved before this field existed keep matching by name exactly as before —
+     * a real id is only needed once a column is renamed, and the UI freezes one
+     * onto the column at that point.
+     *
+     * @param  array<string, mixed>  $column
+     */
+    private function resolveColumnId(array $column, string $name): string
+    {
+        $id = $column['column_id'] ?? null;
+
+        return is_string($id) && $id !== '' ? $id : $name;
     }
 
     /**

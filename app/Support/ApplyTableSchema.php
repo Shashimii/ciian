@@ -83,47 +83,65 @@ class ApplyTableSchema
             return;
         }
 
-        $fromColumns = collect($from['columns'])->keyBy('name');
-        $toColumns = collect($to['columns'])->keyBy('name');
+        // Keyed by column_id, not name, so a rename (same id, new name) is matched to
+        // the same column instead of reading as one column dropped and another added.
+        $fromColumns = collect($from['columns'])->keyBy('column_id');
+        $toColumns = collect($to['columns'])->keyBy('column_id');
 
         $dropped = $fromColumns->keys()->diff($toColumns->keys());
         $added = $toColumns->keys()->diff($fromColumns->keys());
         $changed = $toColumns->keys()
             ->intersect($fromColumns->keys())
-            ->filter(fn (string $name): bool => $this->columnDiffers($fromColumns[$name], $toColumns[$name]));
+            ->filter(fn (string $id): bool => $this->columnDiffers($fromColumns[$id], $toColumns[$id]));
 
-        // Foreign keys must go before the column they sit on is dropped or modified.
+        $droppedNames = $dropped
+            ->map(fn (string $id): string => (string) $fromColumns[$id]['name'])
+            ->values();
+
+        // renameColumn() and pure index toggles carry an existing FK constraint along
+        // automatically (verified: MariaDB keeps it pointed at the column through a
+        // rename). Only a genuine rebuild — the column itself getting a change() — needs
+        // its constraint dropped first; dropping it for every "changed" id would delete
+        // it before a pure rename, which never calls change() and so never re-adds it.
+        $rebuilding = $changed->filter(
+            fn (string $id): bool => $this->needsColumnRebuild($fromColumns[$id], $toColumns[$id]),
+        );
+
+        // Foreign keys must go before the column they sit on is dropped or rebuilt.
         // Which constraints exist is read from the database, not from the stored shape:
         // DDL is not transactional here, so a partly-applied earlier sync can leave the
         // two disagreeing, and dropping an absent constraint aborts the whole publish.
+        // Renamed-but-not-rebuilt columns are still under their old (from) name here.
         $constrainedColumns = $this->foreignKeyColumns($tableName);
 
-        Schema::table($tableName, function (Blueprint $table) use ($dropped, $changed, $constrainedColumns): void {
-            foreach ($dropped->merge($changed) as $name) {
-                if (in_array($name, $constrainedColumns, true)) {
-                    $table->dropForeign([$name]);
+        Schema::table($tableName, function (Blueprint $table) use ($fromColumns, $dropped, $rebuilding, $constrainedColumns): void {
+            foreach ($dropped->merge($rebuilding) as $id) {
+                $physicalName = (string) $fromColumns[$id]['name'];
+
+                if (in_array($physicalName, $constrainedColumns, true)) {
+                    $table->dropForeign([$physicalName]);
                 }
             }
         });
 
         // Only columns leaving the shape are dropped; their data is discarded.
-        if ($dropped->isNotEmpty()) {
-            Schema::table($tableName, function (Blueprint $table) use ($dropped): void {
-                $table->dropColumn($dropped->all());
+        if ($droppedNames->isNotEmpty()) {
+            Schema::table($tableName, function (Blueprint $table) use ($droppedNames): void {
+                $table->dropColumn($droppedNames->all());
             });
         }
 
         if ($added->isNotEmpty()) {
             Schema::table($tableName, function (Blueprint $table) use ($toColumns, $added): void {
-                foreach ($added as $name) {
-                    $this->addColumn($table, $toColumns[$name]);
+                foreach ($added as $id) {
+                    $this->addColumn($table, $toColumns[$id]);
                 }
             });
         }
 
-        // Columns that stay are modified in place so their existing data survives.
-        foreach ($changed as $name) {
-            $this->changeColumn($tableName, $fromColumns[$name], $toColumns[$name]);
+        // Columns that stay are modified (and renamed) in place so their data survives.
+        foreach ($changed as $id) {
+            $this->changeColumn($tableName, $fromColumns[$id], $toColumns[$id]);
         }
 
         $fromTimestamps = (bool) ($from['timestamps'] ?? true);
@@ -156,12 +174,23 @@ class ApplyTableSchema
         $from = $this->shapes->normalize($from);
         $to = $this->shapes->normalize($to);
 
-        $names = static fn (array $columns): array => array_map(
-            static fn (array $column): string => (string) ($column['name'] ?? ''),
-            $columns,
+        // Matched by column_id: a rename must never be reported as a drop.
+        $toIds = array_map(
+            static fn (array $column): string => (string) ($column['column_id'] ?? ''),
+            $to['columns'],
         );
 
-        return array_values(array_diff($names($from['columns']), $names($to['columns'])));
+        $names = [];
+
+        foreach ($from['columns'] as $column) {
+            $id = (string) ($column['column_id'] ?? '');
+
+            if (! in_array($id, $toIds, true)) {
+                $names[] = (string) ($column['name'] ?? '');
+            }
+        }
+
+        return $names;
     }
 
     /**
@@ -172,14 +201,21 @@ class ApplyTableSchema
      */
     private function changeColumn(string $tableName, array $from, array $to): void
     {
-        $name = (string) $to['name'];
-        $live = $this->liveIndexes($tableName)[$name] ?? null;
+        $fromName = (string) $from['name'];
+        $toName = (string) $to['name'];
 
-        Schema::table($tableName, function (Blueprint $table) use ($from, $to, $name, $live): void {
+        // The live column is still under its old name until renameColumn() runs below.
+        $live = $this->liveIndexes($tableName)[$fromName] ?? null;
+
+        Schema::table($tableName, function (Blueprint $table) use ($from, $to, $fromName, $toName, $live): void {
+            if ($fromName !== $toName) {
+                $table->renameColumn($fromName, $toName);
+            }
+
             // change() never touches indexes, so they are reconciled separately.
-            $this->syncIndexes($table, $name, $live, $this->indexStateFor($to));
+            $this->syncIndexes($table, $toName, $live, $this->indexStateFor($to));
 
-            if ($this->onlyIndexesDiffer($from, $to)) {
+            if (! $this->needsColumnRebuild($from, $to)) {
                 return;
             }
 
@@ -222,10 +258,25 @@ class ApplyTableSchema
      */
     private function liveIndexes(string $tableName): array
     {
+        // MariaDB auto-creates an index to back each foreign key, sharing the
+        // constraint's name. The Tables UI never asked for that index, and it can't
+        // be dropped while the constraint needs it — exclude it from what this method
+        // reports as manageable, or syncIndexes() will try to drop it and MariaDB
+        // will refuse ("needed in a foreign key constraint").
+        $foreignKeyIndexNames = [];
+
+        foreach (Schema::getForeignKeys($tableName) as $foreignKey) {
+            $foreignKeyIndexNames[] = (string) $foreignKey['name'];
+        }
+
         $states = [];
 
         foreach (Schema::getIndexes($tableName) as $index) {
             if ($index['primary'] || count($index['columns']) !== 1) {
+                continue;
+            }
+
+            if (in_array($index['name'], $foreignKeyIndexNames, true)) {
                 continue;
             }
 
@@ -292,15 +343,21 @@ class ApplyTableSchema
     }
 
     /**
-     * Whether the only difference is index membership, which needs no column change.
+     * Whether the column definition itself needs re-declaring via change().
+     *
+     * False when the only differences are the identity/name (renameColumn() already
+     * handles that) or index membership (syncIndexes() already handles that) — issuing
+     * a change() for either would just be a redundant no-op MODIFY.
      *
      * @param  array<string, mixed>  $from
      * @param  array<string, mixed>  $to
      */
-    private function onlyIndexesDiffer(array $from, array $to): bool
+    private function needsColumnRebuild(array $from, array $to): bool
     {
         $strip = function (array $column): array {
             $column = $this->canonicalColumn($column);
+
+            unset($column['name'], $column['column_id']);
 
             foreach (ColumnTypes::UNIVERSAL_OPTIONS as $option) {
                 unset($column[$option]);
@@ -309,7 +366,7 @@ class ApplyTableSchema
             return $column;
         };
 
-        return $strip($from) === $strip($to);
+        return $strip($from) !== $strip($to);
     }
 
     /**

@@ -95,6 +95,17 @@ Simple column:
 
 ### Fields every column can use
 
+**`column_id`** (optional)  
+Stable identity for the column, independent of `name`. This is what makes a
+rename a rename instead of a drop-and-add: `App\Support\ApplyTableSchema::sync()`
+matches `pub_shape` against `unpub_shape` by `column_id`, so a column whose id
+stays the same but whose `name` changes gets `renameColumn()`'d in place —
+its data survives. When absent, `TableShapeBuilder` falls back to the column's
+current `name`, which is why every column authored before this field existed
+still matches correctly with no migration needed; a real id only matters once
+a column is renamed, and the Tables UI freezes one onto the column at that
+point. Hand-written shapes (seeders, JSON edits) may omit it.
+
 **`name`**  
 Column name in `snake_case` (e.g. `email`, `role_id`).
 
