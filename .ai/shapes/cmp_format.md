@@ -1,5 +1,7 @@
 # Component Shape Format
 
+> **Status: planned, not yet implemented.** Nothing described here exists in the codebase yet — there is no `ciian_cmp` table, no `CiianComponentSeeder`, no `App\Models\Ciian\Component\Component`, and no `resources/js/pages/component/`. Treat this as the design contract for the Component Engine, not as a description of current behaviour.
+
 This document explains the JSON Ciian stores for a **UI building-block component**.
 
 That JSON lives in:

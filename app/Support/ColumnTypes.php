@@ -5,7 +5,7 @@ namespace App\Support;
 /**
  * Allowed database column types for table shapes and the options each type supports.
  *
- * @see .cursor/context/jsonshapes/db_table_format.md
+ * @see .ai/shapes/db_table_format.md
  */
 class ColumnTypes
 {

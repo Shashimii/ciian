@@ -1,7 +1,6 @@
 ---
-description: UI/design conventions for Ciian pages and components
-globs: resources/js/**/*.tsx
-alwaysApply: true
+paths:
+  - resources/js/**
 ---
 
 # Design Conventions

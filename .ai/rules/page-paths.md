@@ -1,6 +1,6 @@
 ---
-description: Inertia page path and naming conventions for resource pages
-alwaysApply: true
+paths:
+  - resources/js/pages/**
 ---
 
 # Page Paths

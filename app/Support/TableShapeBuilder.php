@@ -7,7 +7,7 @@ use InvalidArgumentException;
 /**
  * Builds and normalizes database table shapes for ciian_int_tbl / ciian_sys_tbl.
  *
- * @see .cursor/context/jsonshapes/db_table_format.md
+ * @see .ai/shapes/db_table_format.md
  */
 class TableShapeBuilder
 {

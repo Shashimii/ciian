@@ -2,7 +2,7 @@
 
 Guide for authoring a new **chore guide** — a step-by-step, AI-followable recipe for recreating a feature in this project.
 
-**Scope:** documentation only (produces a `.md` file in `.cursor/chores/`)
+**Scope:** documentation only (produces a `.md` file in `.ai/chores/`)
 
 **Access:** anyone contributing feature guides.
 
@@ -26,7 +26,7 @@ A chore guide does NOT contain the actual implementation code base — it points
 ## File layout
 
 ```text
-.cursor/chores/
+.ai/chores/
   create-chore.md        ← this meta-guide
   create-{feature}.md    ← one file per feature
 ```
@@ -116,6 +116,6 @@ Close every chore with a checklist so the outcome is testable, e.g.:
 
 ## Related
 
-- `.cursor/context/overview.md` — the system's mission and conventions.
-- `.cursor/rules/` — project rules the feature must respect.
+- `.ai/context/overview.md` — the system's mission and conventions.
+- `.ai/rules/` — project rules the feature must respect.
 - Sibling `create-{feature}.md` chores for prerequisite features.

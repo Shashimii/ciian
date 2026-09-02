@@ -4,9 +4,9 @@ Guide for recreating the **Table create and edit pages** — full-height schema 
 
 **Scope:** full stack (pages + shared form + Form Requests + controller actions)
 
-**Access:** authenticated + verified + `permission:artisyn_all` (same group as other Tables routes)
+**Access:** authenticated + verified + `permission:tables.manage` (same group as other Tables routes)
 
-**Dependencies:** Tables index (`tables.index`), `artisyn_int_tbl` / `artisyn_sys_tbl` models, shape format in `.cursor/context/jsonshapes/db_table_format.md`, Systems list (for System select on create)
+**Dependencies:** Tables index (`tables.index`), `ciian_int_tbl` / `ciian_sys_tbl` models, shape format in `.ai/shapes/db_table_format.md`, Systems list (for System select on create)
 
 ---
 
@@ -21,11 +21,11 @@ Primary routes:
 | `GET` | `/tables/{internalTable}/edit` | `tables.edit` | Edit internal table draft |
 | `PUT` | `/tables/{internalTable}` | `tables.update` | Update draft shape |
 
-Authenticated platform operators with Artisyn access can:
+Authenticated platform operators with the `tables.manage` permission can:
 
 1. Open **New table** from the Tables index header action.
 2. Set **Table Name** (slug auto-generated, read-only).
-3. On create: pick **Table System** (No System, Artisyn, or a created system). On edit: System is locked.
+3. On create: pick **Table System** (Ciian, or a created system; `No System` is legacy and not offered on create). On edit: System is locked.
 4. Build columns in a builder (locked `id` column always present) with type-specific options.
 5. Drag-reorder columns; select a column to edit properties.
 6. Inspect / edit the live **Shape (JSON)** via Monaco (`JsonShapeEditor`); columns ↔ JSON stay in sync.
@@ -72,10 +72,10 @@ Already exists; do not invent a new table for this UI.
 
 | Store | Model | Shape columns |
 |-------|-------|---------------|
-| `artisyn_int_tbl` | `App\Models\Artisyn\InternalTable` | `unpub_shape`, `pub_shape` |
-| `artisyn_sys_tbl` | `App\Models\Artisyn\SystemTable` | `unpub_shape`, `pub_shape` |
+| `ciian_int_tbl` | `App\Models\Ciian\Database\InternalTable` | `unpub_shape`, `pub_shape` |
+| `ciian_sys_tbl` | `App\Models\Ciian\System\SystemTable` | `unpub_shape`, `pub_shape` |
 
-Shape JSON contract: `.cursor/context/jsonshapes/db_table_format.md`.
+Shape JSON contract: `.ai/shapes/db_table_format.md`.
 
 Helpers:
 
@@ -86,16 +86,20 @@ Helpers:
 
 ### Backend
 
-**Routes** (`routes/web.php`, inside `auth` + `verified` + `permission:artisyn_all`):
+**Routes** (`routes/admin.php`, under the `/admin` prefix, inside `auth` + `verified` + `permission:tables.manage`):
 
 ```php
-Route::get('tables/create', [InternalTableController::class, 'create'])->name('tables.create');
-Route::post('tables', [InternalTableController::class, 'store'])->name('tables.store');
-Route::get('tables/{internalTable}/edit', [InternalTableController::class, 'edit'])->name('tables.edit');
-Route::put('tables/{internalTable}', [InternalTableController::class, 'update'])->name('tables.update');
+Route::get('tables/create', [TableController::class, 'create'])->name('tables.create');
+Route::post('tables', [TableController::class, 'store'])->name('tables.store');
+
+Route::get('tables/internal/{internalTable}', [TableController::class, 'editInternal'])->name('tables.internal.edit');
+Route::patch('tables/internal/{internalTable}', [TableController::class, 'updateInternal'])->name('tables.internal.update');
+
+Route::get('tables/system/{systemTable}', [TableController::class, 'editSystem'])->name('tables.system.edit');
+Route::patch('tables/system/{systemTable}', [TableController::class, 'updateSystem'])->name('tables.system.update');
 ```
 
-**Controller:** `app/Http/Controllers/InternalTableController.php`
+**Controller:** `app/Http/Controllers/Ciian/Database/TableController.php`
 
 | Action | Behavior |
 |--------|----------|
@@ -200,10 +204,10 @@ Design rules to follow: design.mdc (validation clear-on-edit, no browser `confir
 
 ## Verification checklist
 
-- [ ] `GET /tables/create` and `GET /tables/{id}/edit` require auth + verified + Artisyn permission
+- [ ] `GET /tables/create` and `GET /tables/{id}/edit` require auth + verified + `tables.manage`
 - [ ] Create posts to `tables.store`; edit puts to `tables.update` via Wayfinder
 - [ ] Form Requests validate name, slug, columns, and types; `tablePayload()` builds `unpub_shape`
-- [ ] Create can target Artisyn / No System (`InternalTable`) or a system (`SystemTable`)
+- [ ] Create can target Ciian (`InternalTable`) or a system (`SystemTable`)
 - [ ] Edit locks System; slug stays auto from name (read-only)
 - [ ] Locked Auto Increment `id` column always present
 - [ ] Column builder and Shape JSON stay in sync
@@ -216,8 +220,8 @@ Design rules to follow: design.mdc (validation clear-on-edit, no browser `confir
 
 ## Related
 
-- `.cursor/context/jsonshapes/db_table_format.md` — shape JSON contract
-- `.cursor/context/overview.md` — Systems / tables mission
-- `.cursor/rules/page-paths.mdc` — `create` / `update` naming
-- `.cursor/rules/design.mdc` — form, badge, and header conventions
+- `.ai/shapes/db_table_format.md` — shape JSON contract
+- `.ai/context/overview.md` — Systems / tables mission
+- `.ai/rules/page-paths.md` — `create` / `update` naming
+- `.ai/rules/design.md` — form, badge, and header conventions
 - Tables index page / publish flow (separate from this chore)

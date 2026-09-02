@@ -1,6 +1,6 @@
 ---
-description: Only create tests when the user explicitly asks
-alwaysApply: true
+paths:
+  - "**"
 ---
 
 # Tests Only On Request

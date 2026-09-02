@@ -1,6 +1,8 @@
 ---
-description: General PHP/Laravel coding conventions including middleware and model layout
-alwaysApply: true
+paths:
+  - app/**
+  - database/factories/**
+  - database/migrations/**
 ---
 
 # Code Conventions

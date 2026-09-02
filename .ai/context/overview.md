@@ -108,13 +108,13 @@ The editor is page-by-page, like a visual IDE:
 
 ## Conventions
 
-- Business logic lives in **Services**, validation in **Form Requests**, orchestration in **Controllers**.
+- Business logic lives in **Actions** (`app/Actions/`, e.g. `PublishTable`, `SaveTableDraft`), stateless helpers and presenters in **Support** (`app/Support/`), validation in **Form Requests**, orchestration in thin **Controllers**. There is no `app/Services/` directory — do not create one.
 - Frontend calls backend via **Wayfinder**-generated functions (no hardcoded URLs).
-- Project rules live in `.cursor/rules/`; feature recipes live in `.cursor/chores/`.
+- Project rules live in `.ai/rules/`; feature recipes live in `.ai/chores/`.
 
 ---
 
 ## Related
 
-- `.cursor/rules/` — enforced project rules.
-- `.cursor/chores/` — step-by-step feature guides.
+- `.ai/rules/` — enforced project rules.
+- `.ai/chores/` — step-by-step feature guides.
