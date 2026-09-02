@@ -16,12 +16,13 @@ use Illuminate\Support\Carbon;
  * @property string $tag
  * @property string $icon
  * @property string $status
+ * @property bool $can_delete
  * @property array<string, mixed>|null $unpub_shape
  * @property array<string, mixed>|null $pub_shape
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'slug', 'tag', 'icon', 'status', 'unpub_shape', 'pub_shape'])]
+#[Fillable(['name', 'slug', 'tag', 'icon', 'status', 'can_delete', 'unpub_shape', 'pub_shape'])]
 class InternalTable extends Model
 {
     /** @use HasFactory<InternalTableFactory> */
@@ -30,17 +31,6 @@ class InternalTable extends Model
     public const TAG_CIIAN = 'ciian';
 
     public const TAG_NO_SYSTEM = 'no_system';
-
-    /**
-     * Seeded Accounts tables (`Database\Seeders\CiianInternalTableSeeder`) that back
-     * platform auth and must never be deleted through the Tables UI. Deliberately a
-     * superset of `App\Support\EloquentModelPath::PROTECTED`: `permission_role` has
-     * no hand-written (or any) Eloquent model, so it needs its own guard here rather
-     * than relying on model protection to imply it's safe.
-     *
-     * @var list<string>
-     */
-    public const CORE_ACCOUNTS_SLUGS = ['users', 'roles', 'permissions', 'permission_role'];
 
     public const STATUS_UNPUBLISHED = 'unpublished';
 
@@ -53,6 +43,7 @@ class InternalTable extends Model
         'tag' => self::TAG_CIIAN,
         'icon' => 'Sparkles',
         'status' => self::STATUS_UNPUBLISHED,
+        'can_delete' => true,
     ];
 
     /**
@@ -66,6 +57,7 @@ class InternalTable extends Model
     protected function casts(): array
     {
         return [
+            'can_delete' => 'boolean',
             'unpub_shape' => 'array',
             'pub_shape' => 'array',
         ];

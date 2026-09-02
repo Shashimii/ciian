@@ -79,6 +79,7 @@ app/Http/Requests/Settings/...
 - Tables list also includes `ciian_sys_tbl` rows; those badges use the parent **system** icon, not `ciian_int_tbl.icon`.
 - Do **not** store created-system tables in `ciian_int_tbl`; do **not** store Ciian-tagged tables in `ciian_sys_tbl`.
 - Both table stores use `status`, `unpub_shape`, and `pub_shape`. Physical Laravel platform tables stay migration-backed; `unpub_shape` updates are metadata until publish copies them to `pub_shape` and the Database Engine applies DDL.
+- Both table stores also carry `can_delete` (boolean, default `true`), checked by `App\Actions\Database\DeleteTable` before any drop. It is set once by seeders — `CiianInternalTableSeeder` seeds every row with `can_delete: false`, since all four are platform Accounts tables — and by nothing else in the app; no request handler, action, or UI control ever flips it. A `false` row can only become deletable again by a developer editing the column directly in the database. Never add a code path that toggles it.
 - On publish, Ciian creates the physical table (including FK constraints) and generates an Eloquent model under `App\Models\Systems\{System|Ciian}\` with `belongsTo` / inbound `hasMany` from foreign key columns.
 
 ## Middleware naming

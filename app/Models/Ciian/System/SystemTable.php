@@ -15,13 +15,14 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $slug
  * @property string $status
+ * @property bool $can_delete
  * @property array<string, mixed>|null $unpub_shape
  * @property array<string, mixed>|null $pub_shape
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read System $system
  */
-#[Fillable(['system_id', 'name', 'slug', 'status', 'unpub_shape', 'pub_shape'])]
+#[Fillable(['system_id', 'name', 'slug', 'status', 'can_delete', 'unpub_shape', 'pub_shape'])]
 class SystemTable extends Model
 {
     /** @use HasFactory<SystemTableFactory> */
@@ -36,6 +37,7 @@ class SystemTable extends Model
      */
     protected $attributes = [
         'status' => self::STATUS_UNPUBLISHED,
+        'can_delete' => true,
     ];
 
     /**
@@ -49,6 +51,7 @@ class SystemTable extends Model
     protected function casts(): array
     {
         return [
+            'can_delete' => 'boolean',
             'unpub_shape' => 'array',
             'pub_shape' => 'array',
         ];

@@ -205,7 +205,7 @@ class TableIndexPresenter
             'has_pending_changes' => $table->hasPendingChanges(),
             'can_publish' => ! $table->isPublished() || $table->hasPendingChanges(),
             'is_sync' => $table->isPublished() && $table->hasPendingChanges(),
-            'can_delete' => ! in_array($table->slug, InternalTable::CORE_ACCOUNTS_SLUGS, true),
+            'can_delete' => $table->can_delete,
             'dropped_columns' => $this->droppedColumnsFor($table),
             'system' => $this->systemBadgeForInternal($table, $ciianSlug),
             'unpub_shape' => $table->unpub_shape,
@@ -228,7 +228,7 @@ class TableIndexPresenter
             'has_pending_changes' => $table->hasPendingChanges(),
             'can_publish' => ! $table->isPublished() || $table->hasPendingChanges(),
             'is_sync' => $table->isPublished() && $table->hasPendingChanges(),
-            'can_delete' => true,
+            'can_delete' => $table->can_delete,
             'dropped_columns' => $this->droppedColumnsFor($table),
             'system' => [
                 'type' => 'system',

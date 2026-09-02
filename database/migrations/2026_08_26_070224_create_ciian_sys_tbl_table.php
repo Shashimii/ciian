@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug');
             $table->string('status')->default('unpublished')->index();
+            $table->boolean('can_delete')->default(true);
             $table->longText('unpub_shape')->nullable();
             $table->longText('pub_shape')->nullable();
             $table->timestamps();

@@ -17,23 +17,24 @@ class DeleteTable
 
     /**
      * Delete a table draft: drop the physical table (if published), remove its
-     * generated model, then delete the row. Refused for protected platform tables
-     * and for any table another published table's foreign key still references.
+     * generated model, then delete the row. Refused when the row's `can_delete`
+     * column is false — a flag set once by seeders, never by the app itself, so a
+     * table it protects can only come back through the Tables UI by a developer
+     * clearing the column directly in the database, not through any code path here.
+     * Also refused for any table another published table's foreign key still
+     * references.
      */
     public function handle(InternalTable|SystemTable $table): void
     {
-        $shape = $this->currentShape($table);
-        $target = $this->paths->forShape($table, $shape);
-        $physical = $target['table'];
-
-        $isCoreAccountsTable = $table instanceof InternalTable
-            && in_array($table->slug, InternalTable::CORE_ACCOUNTS_SLUGS, true);
-
-        if ($target['protected'] || $isCoreAccountsTable) {
+        if (! $table->can_delete) {
             throw ValidationException::withMessages([
                 'table' => __('This is a protected platform table and cannot be deleted.'),
             ]);
         }
+
+        $shape = $this->currentShape($table);
+        $target = $this->paths->forShape($table, $shape);
+        $physical = $target['table'];
 
         if ($physical !== '') {
             $referencedBy = $this->referencingTables($physical);

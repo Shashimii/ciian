@@ -285,6 +285,10 @@ class CiianInternalTableSeeder extends Seeder
             'tag' => InternalTable::TAG_CIIAN,
             'icon' => $icon,
             'status' => InternalTable::STATUS_PUBLISHED,
+            // Every table this seeder creates backs platform auth — never deletable
+            // through the Tables UI. Clearing this column is a developer-only, direct
+            // database action; nothing in the app itself ever flips it back.
+            'can_delete' => false,
             'unpub_shape' => $shape,
             'pub_shape' => $shape,
         ];
