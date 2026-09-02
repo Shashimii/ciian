@@ -344,6 +344,26 @@ export default function TableForm({
         ? isLockedIdColumn(selectedColumn)
         : false;
 
+    const referenceGroups = useMemo(() => {
+        const currentValue = selectedColumn?.references;
+        const isStale =
+            currentValue &&
+            !relationTables.some((relation) => relation.value === currentValue);
+
+        return [
+            {
+                options: [
+                    // A saved reference no longer in the published list (e.g. the
+                    // target table was renamed or unpublished) still shows as-is.
+                    ...(isStale
+                        ? [{ value: currentValue, label: currentValue }]
+                        : []),
+                    ...relationTables,
+                ],
+            },
+        ];
+    }, [relationTables, selectedColumn?.references]);
+
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
         useSensor(KeyboardSensor, {
@@ -1012,11 +1032,15 @@ export default function TableForm({
                                                 <Label htmlFor="column-references">
                                                     References
                                                 </Label>
-                                                <Select
+                                                <Combobox
+                                                    id="column-references"
+                                                    groups={referenceGroups}
                                                     value={
-                                                        selectedColumn.references ||
-                                                        undefined
+                                                        selectedColumn.references
                                                     }
+                                                    placeholder="Select References"
+                                                    searchPlaceholder="Search tables…"
+                                                    emptyMessage="No matching table."
                                                     onValueChange={(value) =>
                                                         updateColumn(
                                                             selectedColumnIndex,
@@ -1026,48 +1050,7 @@ export default function TableForm({
                                                             },
                                                         )
                                                     }
-                                                >
-                                                    <SelectTrigger
-                                                        id="column-references"
-                                                        className="w-full"
-                                                    >
-                                                        <SelectValue placeholder="Select References" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {selectedColumn.references &&
-                                                            !relationTables.some(
-                                                                (relation) =>
-                                                                    relation.value ===
-                                                                    selectedColumn.references,
-                                                            ) && (
-                                                                <SelectItem
-                                                                    value={
-                                                                        selectedColumn.references
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        selectedColumn.references
-                                                                    }
-                                                                </SelectItem>
-                                                            )}
-                                                        {relationTables.map(
-                                                            (relation) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        relation.value
-                                                                    }
-                                                                    value={
-                                                                        relation.value
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        relation.label
-                                                                    }
-                                                                </SelectItem>
-                                                            ),
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
+                                                />
                                             </div>
                                         )}
 
