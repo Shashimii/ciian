@@ -10,7 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import DataTable from '@/components/data-table';
 import type { DataTableColumn } from '@/components/data-table';
-import { ConfirmDialog } from '@/components/modal';
+import { ConfirmDialog, Modal } from '@/components/modal';
 import TagBadge from '@/components/tag-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,10 +31,20 @@ type Props = {
     tables: TableRow[];
 };
 
+type ErrorDetail = {
+    title: string;
+    message: string;
+};
+
+/** Longer than this and the message goes to a modal instead of a toast. */
+const ERROR_TOAST_MAX_LENGTH = 120;
+
 export default function TableIndex({ tables }: Props) {
     const [dropDialogOpen, setDropDialogOpen] = useState(false);
     const [pendingDrop, setPendingDrop] = useState<TableRow | null>(null);
     const [publishingKey, setPublishingKey] = useState<string | null>(null);
+    const [errorOpen, setErrorOpen] = useState(false);
+    const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
 
     // Keep the payload while the dialog fades out so its content stays stable.
     useEffect(() => {
@@ -46,6 +56,17 @@ export default function TableIndex({ tables }: Props) {
 
         return () => clearTimeout(timer);
     }, [dropDialogOpen]);
+
+    // Keep the payload while the dialog fades out so its content stays stable.
+    useEffect(() => {
+        if (errorOpen) {
+            return;
+        }
+
+        const timer = setTimeout(() => setErrorDetail(null), 200);
+
+        return () => clearTimeout(timer);
+    }, [errorOpen]);
 
     useEffect(() => {
         setLayoutProps({
@@ -138,6 +159,27 @@ export default function TableIndex({ tables }: Props) {
         );
     };
 
+    // Long driver errors are unreadable in a toast, so offer them in a modal instead.
+    const showError = (title: string, message: string) => {
+        if (message.length <= ERROR_TOAST_MAX_LENGTH) {
+            toast.error(message, { duration: 12000 });
+
+            return;
+        }
+
+        toast.error('Error encountered', {
+            description: title,
+            duration: 15000,
+            action: {
+                label: 'View',
+                onClick: () => {
+                    setErrorDetail({ title, message });
+                    setErrorOpen(true);
+                },
+            },
+        });
+    };
+
     const submitPublish = (table: TableRow, confirmDrops = false) => {
         const label = table.is_sync ? 'Syncing' : 'Publishing';
         let toastId: string | number | undefined;
@@ -154,10 +196,10 @@ export default function TableIndex({ tables }: Props) {
                     toastId = toast.loading(`${label} ${table.name}…`);
                 },
                 onError: (errors) => {
-                    toast.error(
+                    showError(
+                        `${table.name} could not be ${table.is_sync ? 'synced' : 'published'}`,
                         errors.shape ??
-                            `${table.name} could not be ${table.is_sync ? 'synced' : 'published'}.`,
-                        { duration: 12000 },
+                            'The database rejected the change. No reason was returned.',
                     );
                 },
                 onFinish: () => {
@@ -220,7 +262,7 @@ export default function TableIndex({ tables }: Props) {
                 onConfirm={confirmDrop}
             >
                 {pendingDrop && (
-                    <ul className="flex flex-wrap justify-center gap-2">
+                    <ul className="flex flex-wrap gap-2">
                         {pendingDrop.dropped_columns.map((column) => (
                             <li
                                 key={column}
@@ -232,6 +274,30 @@ export default function TableIndex({ tables }: Props) {
                     </ul>
                 )}
             </ConfirmDialog>
+
+            <Modal
+                open={errorOpen}
+                onOpenChange={setErrorOpen}
+                tone="destructive"
+                size="xl"
+                title={errorDetail?.title ?? 'Error encountered'}
+                description="The database rejected the change. Nothing was applied beyond any steps already reported."
+                footer={
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setErrorOpen(false)}
+                    >
+                        Close
+                    </Button>
+                }
+            >
+                {errorDetail && (
+                    <pre className="max-h-56 overflow-auto rounded-md bg-destructive/10 p-3 text-left font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-destructive">
+                        {errorDetail.message}
+                    </pre>
+                )}
+            </Modal>
         </>
     );
 }
