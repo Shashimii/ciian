@@ -1,0 +1,25 @@
+---
+description: Pointer to the shared, agent-neutral project rules in .ai/rules
+alwaysApply: true
+---
+
+# Project Rules
+
+This project keeps its rules in `.ai/rules/` so every AI agent reads the same
+source. Nothing is duplicated here.
+
+Before planning or editing any file, you MUST:
+
+1. Open `.ai/rules/index.md` — it maps file globs to rule files.
+2. Read every rule file whose globs cover the path(s) you are about to touch.
+3. Run `grep -rin '<keyword>' .ai/rules` to catch rules a path match alone misses.
+
+Do not write code until you are following every matching rule.
+
+Wider project context lives alongside it:
+
+- `.ai/context/` — what Ciian is and the build roadmap.
+- `.ai/shapes/` — the JSON contracts for table and component shapes.
+- `.ai/chores/` — step-by-step feature recipes.
+
+See `.ai/README.md` for the full map.
