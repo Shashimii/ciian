@@ -61,11 +61,12 @@ Use `Modal` / `ConfirmDialog` from `@/components/modal`. Do **not** use browser 
 Match the centered status-dialog pattern:
 
 1. **Icon** (optional on `Modal`, default on `ConfirmDialog`) — `size-12` circular badge above the title; icon glyph at `size-6`.
-   - `tone` / `variant`: `default` → `bg-primary/15 text-primary`; `success` → `bg-emerald-500/15 text-emerald-500` + `Check`; `destructive` → `bg-destructive/15 text-destructive` + `TriangleAlert`.
+    - `tone` / `variant`: `default` → `bg-primary/15 text-primary`; `success` → `bg-emerald-500/15 text-emerald-500` + `Check`; `destructive` → `bg-destructive/15 text-destructive` + `TriangleAlert`.
 2. **Title** — centered, `text-xl font-semibold tracking-tight`.
 3. **Description** — centered, `text-sm leading-relaxed text-muted-foreground`.
 4. **Actions** — one row, equal width: Cancel `variant="outline" size="lg" className="flex-1"`, confirm `size="lg" className="flex-1"` (`default` or `destructive`). Footer uses `flex-row gap-3`.
-5. **Chrome** — `rounded-xl p-8 sm:max-w-md gap-6`; `showCloseButton` defaults to **false** (no X). Dismiss via Cancel, overlay click, or Escape.
+5. **Chrome** — `rounded-xl p-8 gap-6`; `showCloseButton` defaults to **false** (no X). Dismiss via Cancel, overlay click, or Escape.
+6. **Size** — `size` prop on `Modal` / `ConfirmDialog` picks the max-width: `sm` / `md` (default) / `lg` / `xl`. Use `md` for confirmations; reach for `lg` or `xl` only when the body genuinely needs the room (e.g. a long error message). Never override width with a raw `className`.
 
 ### Behavior
 

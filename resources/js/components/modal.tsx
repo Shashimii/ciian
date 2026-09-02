@@ -14,6 +14,9 @@ import { cn } from '@/lib/utils';
 
 export type ModalTone = 'default' | 'success' | 'destructive';
 
+/** Standard widths every Modal / ConfirmDialog picks from. Default matches the previous fixed size. */
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
+
 const TONE_BADGE: Record<ModalTone, string> = {
     default: 'bg-primary/15 text-primary',
     success: 'bg-emerald-500/15 text-emerald-500',
@@ -26,6 +29,13 @@ const TONE_ICON: Record<ModalTone, LucideIcon | null> = {
     destructive: TriangleAlert,
 };
 
+const SIZE_CLASS: Record<ModalSize, string> = {
+    sm: 'sm:max-w-sm',
+    md: 'sm:max-w-md',
+    lg: 'sm:max-w-lg',
+    xl: 'sm:max-w-xl',
+};
+
 type ModalProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -34,6 +44,8 @@ type ModalProps = {
     tone?: ModalTone;
     /** Overrides the tone's default glyph. Pass `null` to render no badge at all. */
     icon?: LucideIcon | null;
+    /** Dialog max-width. Defaults to `md`, the standard confirmation size. */
+    size?: ModalSize;
     children?: ReactNode;
     footer?: ReactNode;
     /** Blocks overlay/Escape dismissal while an action is in flight. */
@@ -47,6 +59,7 @@ export function Modal({
     description,
     tone = 'default',
     icon,
+    size = 'md',
     children,
     footer,
     processing = false,
@@ -64,7 +77,7 @@ export function Modal({
         >
             <DialogContent
                 showCloseButton={false}
-                className="gap-6 rounded-xl p-8 sm:max-w-md"
+                className={cn('gap-6 rounded-xl p-8', SIZE_CLASS[size])}
             >
                 <DialogHeader className="items-center gap-3 text-center sm:text-center">
                     {Icon && (
@@ -107,6 +120,7 @@ type ConfirmDialogProps = {
     title: string;
     description?: ReactNode;
     variant?: ModalTone;
+    size?: ModalSize;
     confirmLabel?: string;
     cancelLabel?: string;
     onConfirm: () => void;
@@ -120,6 +134,7 @@ export function ConfirmDialog({
     title,
     description,
     variant = 'destructive',
+    size = 'md',
     confirmLabel = 'Confirm',
     cancelLabel = 'Cancel',
     onConfirm,
@@ -133,6 +148,7 @@ export function ConfirmDialog({
             title={title}
             description={description}
             tone={variant}
+            size={size}
             processing={processing}
             footer={
                 <>
