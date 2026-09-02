@@ -9,6 +9,8 @@ use App\Models\Ciian\System\SystemTable;
 
 class TableIndexPresenter
 {
+    public function __construct(private ApplyTableSchema $schema) {}
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -203,6 +205,7 @@ class TableIndexPresenter
             'has_pending_changes' => $table->hasPendingChanges(),
             'can_publish' => ! $table->isPublished() || $table->hasPendingChanges(),
             'is_sync' => $table->isPublished() && $table->hasPendingChanges(),
+            'dropped_columns' => $this->droppedColumnsFor($table),
             'system' => $this->systemBadgeForInternal($table, $ciianSlug),
             'unpub_shape' => $table->unpub_shape,
         ];
@@ -224,6 +227,7 @@ class TableIndexPresenter
             'has_pending_changes' => $table->hasPendingChanges(),
             'can_publish' => ! $table->isPublished() || $table->hasPendingChanges(),
             'is_sync' => $table->isPublished() && $table->hasPendingChanges(),
+            'dropped_columns' => $this->droppedColumnsFor($table),
             'system' => [
                 'type' => 'system',
                 'label' => $table->system->name,
@@ -232,6 +236,26 @@ class TableIndexPresenter
             ],
             'unpub_shape' => $table->unpub_shape,
         ];
+    }
+
+    /**
+     * Columns a sync would drop, so the UI can confirm the data loss before publishing.
+     *
+     * Only tables with a pending sync can drop anything, so the schema lookup is skipped
+     * for everything else.
+     *
+     * @return list<string>
+     */
+    private function droppedColumnsFor(InternalTable|SystemTable $table): array
+    {
+        if (! $table->hasPendingChanges()) {
+            return [];
+        }
+
+        return $this->schema->droppedColumns(
+            is_array($table->pub_shape) ? $table->pub_shape : [],
+            is_array($table->unpub_shape) ? $table->unpub_shape : [],
+        );
     }
 
     /**

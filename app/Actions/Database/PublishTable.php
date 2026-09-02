@@ -22,8 +22,11 @@ class PublishTable
 
     /**
      * Publish or sync a table draft: apply DDL + FKs, copy unpub_shape → pub_shape, status=published.
+     *
+     * Dropping a column destroys its data, so a sync that removes one is refused
+     * until the caller confirms it.
      */
-    public function handle(InternalTable|SystemTable $table): InternalTable|SystemTable
+    public function handle(InternalTable|SystemTable $table, bool $confirmedDrops = false): InternalTable|SystemTable
     {
         $shape = $table->unpub_shape;
 
@@ -48,6 +51,21 @@ class PublishTable
             throw ValidationException::withMessages([
                 'shape' => __('This table has no pending changes to sync.'),
             ]);
+        }
+
+        if ($isSync && ! $confirmedDrops) {
+            $dropped = $this->schema->droppedColumns(
+                is_array($table->pub_shape) ? $table->pub_shape : [],
+                $normalized,
+            );
+
+            if ($dropped !== []) {
+                throw ValidationException::withMessages([
+                    'shape' => __('Publishing permanently deletes :columns and all data stored in them.', [
+                        'columns' => implode(', ', $dropped),
+                    ]),
+                ]);
+            }
         }
 
         $tableName = $normalized['tbl_db_name'];

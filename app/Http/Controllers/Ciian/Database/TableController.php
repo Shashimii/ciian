@@ -11,6 +11,7 @@ use App\Models\Ciian\Database\InternalTable;
 use App\Models\Ciian\System\SystemTable;
 use App\Support\TableIndexPresenter;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -119,12 +120,13 @@ class TableController extends Controller
      * Publish or sync an internal table draft to a physical table.
      */
     public function publishInternal(
+        Request $request,
         InternalTable $internalTable,
         PublishTable $publishTable,
     ): RedirectResponse {
         $wasSync = $internalTable->isPublished() && $internalTable->hasPendingChanges();
 
-        $publishTable->handle($internalTable);
+        $publishTable->handle($internalTable, $request->boolean('confirm_drops'));
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -140,12 +142,13 @@ class TableController extends Controller
      * Publish or sync a system-owned table draft to a physical table.
      */
     public function publishSystem(
+        Request $request,
         SystemTable $systemTable,
         PublishTable $publishTable,
     ): RedirectResponse {
         $wasSync = $systemTable->isPublished() && $systemTable->hasPendingChanges();
 
-        $publishTable->handle($systemTable);
+        $publishTable->handle($systemTable, $request->boolean('confirm_drops'));
 
         Inertia::flash('toast', [
             'type' => 'success',
