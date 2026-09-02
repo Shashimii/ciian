@@ -36,6 +36,8 @@ Route::prefix('admin')->group(function () {
                 ->name('tables.internal.update');
             Route::post('tables/internal/{internalTable}/publish', [TableController::class, 'publishInternal'])
                 ->name('tables.internal.publish');
+            Route::delete('tables/internal/{internalTable}', [TableController::class, 'destroyInternal'])
+                ->name('tables.internal.destroy');
 
             Route::get('tables/system/{systemTable}', [TableController::class, 'editSystem'])
                 ->name('tables.system.edit');
@@ -43,6 +45,8 @@ Route::prefix('admin')->group(function () {
                 ->name('tables.system.update');
             Route::post('tables/system/{systemTable}/publish', [TableController::class, 'publishSystem'])
                 ->name('tables.system.publish');
+            Route::delete('tables/system/{systemTable}', [TableController::class, 'destroySystem'])
+                ->name('tables.system.destroy');
         });
     });
 });

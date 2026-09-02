@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ciian\Database;
 
+use App\Actions\Database\DeleteTable;
 use App\Actions\Database\PublishTable;
 use App\Actions\Database\SaveTableDraft;
 use App\Http\Controllers\Controller;
@@ -158,5 +159,35 @@ class TableController extends Controller
         ]);
 
         return back();
+    }
+
+    /**
+     * Delete an internal (seeded Ciian) table draft and, if published, its physical table.
+     */
+    public function destroyInternal(InternalTable $internalTable, DeleteTable $deleteTable): RedirectResponse
+    {
+        $deleteTable->handle($internalTable);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Table deleted.'),
+        ]);
+
+        return to_route('tables.index');
+    }
+
+    /**
+     * Delete a system-owned table draft and, if published, its physical table.
+     */
+    public function destroySystem(SystemTable $systemTable, DeleteTable $deleteTable): RedirectResponse
+    {
+        $deleteTable->handle($systemTable);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Table deleted.'),
+        ]);
+
+        return to_route('tables.index');
     }
 }
