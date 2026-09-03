@@ -15,6 +15,9 @@ use Illuminate\Database\Seeder;
  *
  * Default blocks are seeded with `can_delete: false` — they ship with the platform
  * and pages may already reference them.
+ *
+ * Each block's `info.component` points at its real file under
+ * `resources/js/components/blocks/default/`; keep the two in step when either moves.
  */
 class CiianComponentSeeder extends Seeder
 {
@@ -52,7 +55,7 @@ class CiianComponentSeeder extends Seeder
                 'slug' => 'button',
                 'category' => 'application',
                 'description' => 'Clickable action control',
-                'component' => '@/components/blocks/button',
+                'component' => '@/components/blocks/default/button',
             ],
             'properties' => [
                 'label' => [
@@ -86,12 +89,7 @@ export type BlockButtonProps = {
     label: string;
     purpose?: 'button' | 'submit' | 'reset';
     variant?:
-        | 'default'
-        | 'destructive'
-        | 'outline'
-        | 'secondary'
-        | 'ghost'
-        | 'link';
+        'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
     size?: 'default' | 'sm' | 'lg';
 };
 

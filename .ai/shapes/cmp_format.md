@@ -2,9 +2,9 @@
 
 > **Status: partly implemented.**
 >
-> **Exists:** the `ciian_cmp` table, `App\Models\Ciian\Component\Component` (with `definition()`), `Database\Seeders\CiianComponentSeeder` seeding the Button block, `ComponentFactory`, the `components.manage` permission, and a read-only index at `/admin/components` (`resources/js/pages/component/index.tsx`).
+> **Exists:** the `ciian_cmp` table, `App\Models\Ciian\Component\Component` (with `definition()`), `Database\Seeders\CiianComponentSeeder` seeding the Button block, `ComponentFactory`, the `components.manage` permission, a read-only index at `/admin/components` (`resources/js/pages/component/index.tsx`), and the `resources/js/components/blocks/` tree (`core/`, `default/`, `custom/`) with `default/button.tsx` checked in.
 >
-> **Does not exist yet:** any publish/sync engine, shape validation, editing or upload UI, and `resources/js/components/blocks/`. Crucially, **nothing renders a component from its stored `tsx` yet** — how that source becomes a live React component (generate a file on publish, compile in the browser, or ship checked-in blocks) is still an open decision. Until it is made, `info.component` is metadata only.
+> **Does not exist yet:** any publish/sync engine, shape validation, and editing or upload UI. Crucially, **nothing renders a component from its stored `tsx` yet** — how that source becomes a live React component (generate a file on publish, compile in the browser, or ship checked-in blocks) is still an open decision. Until it is made, `info.component` is a path the builder does not yet follow.
 >
 > Treat the rest of this document as the design contract, not as a description of current behaviour.
 
@@ -21,8 +21,8 @@ Default building blocks are seeded from `Database\Seeders\CiianComponentSeeder`.
 Related code:
 
 - `App\Models\Ciian\Component\Component` — model (`type = block` for building blocks)
-- `resources/js/components/blocks/` — generated / checked-in TSX for default blocks
-- `resources/js/pages/component/index.tsx` — Components index / previews
+- `resources/js/components/blocks/` — `core/` (engine internals), `default/` (shipped blocks), `custom/` (uploaded). See `.ai/rules/design.md`.
+- `resources/js/pages/component/index.tsx` — Components index (metadata table; no previews yet)
 
 ---
 
@@ -73,7 +73,7 @@ At the top level, a definition always has `info`, `properties`, and `tsx`:
     "slug": "button",
     "category": "application",
     "description": "Clickable action control",
-    "component": "@/components/blocks/button"
+    "component": "@/components/blocks/default/button"
   },
   "properties": {
     "label": {
@@ -105,7 +105,7 @@ Palette group slug, e.g. `"application"`, `"forms"`, `"content"`.
 Short help text for the Components index / palette.
 
 **`component`** (optional)  
-Module path used when a real TSX file exists on disk, e.g. `"@/components/blocks/button"`.
+Module path used when a real TSX file exists on disk, e.g. `"@/components/blocks/default/button"`.
 
 ---
 
@@ -215,7 +215,7 @@ Matches `CiianComponentSeeder::buttonBlock()`.
     "slug": "button",
     "category": "application",
     "description": "Clickable action control",
-    "component": "@/components/blocks/button"
+    "component": "@/components/blocks/default/button"
   },
   "properties": {
     "label": {

@@ -158,6 +158,20 @@ Tags are always rendered as **pill badges** via `TagBadge` (`@/components/tag-ba
 
 - Use Inertia `<Link>` (not `<a>`) for internal navigation.
 
+## Builder blocks
+
+Page-builder building blocks live under `resources/js/components/blocks/`, split three ways by **who owns the file**. Everything outside `blocks/` — the ~33 files at the top of `components/` and all of `components/ui/` — is ordinary application UI and is not a block.
+
+| Folder | Contents | DB row in `ciian_cmp`? | In the builder palette? |
+|--------|----------|------------------------|--------------------------|
+| `blocks/core/` | Internals the builder engine needs (slots, wrappers, placeholders). Hand-coded, never user-facing. | No | No |
+| `blocks/default/` | Reusable blocks shipped with Ciian, seeded by `CiianComponentSeeder`. | Yes, seeded with `can_delete: false` | Yes |
+| `blocks/custom/` | Blocks uploaded by a developer. Empty until the upload flow exists. | Yes, one row each | Yes |
+
+- A block in `default/` **must** have a matching `ciian_cmp` row, and that row's `info.component` must be its real import path (e.g. `@/components/blocks/default/button`). A file with no row is invisible to the builder; a row pointing at a missing file cannot render.
+- Never put a `core/` block in `ciian_cmp`. It is engine machinery, not something a user places.
+- Do not add application chrome (headers, sidebars, dialogs) under `blocks/` — that belongs at the top level of `components/`.
+
 ## Wayfinder
 
 - Regenerate typed routes with **`php artisan wayfinder:generate --with-form`**. The flag is required: `vite.config.ts` sets `formVariants: true`, but the Artisan command does not read that config and defaults the flag off, so a bare run silently strips the `.form` variant off every route and breaks every form page at once. See `.ai/fixes/wayfinder-form-variants.md`.
