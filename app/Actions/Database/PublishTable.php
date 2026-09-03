@@ -5,6 +5,7 @@ namespace App\Actions\Database;
 use App\Models\Ciian\Database\InternalTable;
 use App\Models\Ciian\System\SystemTable;
 use App\Support\ApplyTableSchema;
+use App\Support\TableChangeInspector;
 use App\Support\TableShapeBuilder;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +18,7 @@ class PublishTable
     public function __construct(
         private TableShapeBuilder $shapes,
         private ApplyTableSchema $schema,
+        private TableChangeInspector $inspector,
         private GenerateEloquentModel $generateModel,
     ) {}
 
@@ -64,6 +66,20 @@ class PublishTable
                     'shape' => __('Publishing permanently deletes :columns and all data stored in them.', [
                         'columns' => implode(', ', $dropped),
                     ]),
+                ]);
+            }
+        }
+
+        if ($isSync) {
+            $blocked = $this->inspector->findBlockingChanges(
+                $normalized['tbl_db_name'],
+                is_array($table->pub_shape) ? $table->pub_shape : [],
+                $normalized,
+            );
+
+            if ($blocked !== []) {
+                throw ValidationException::withMessages([
+                    'shape' => implode("\n", $blocked),
                 ]);
             }
         }

@@ -194,6 +194,42 @@ class ApplyTableSchema
     }
 
     /**
+     * Columns `sync()` will touch in some way — matched by column_id, wherever the
+     * definition genuinely differs (a pure rename with nothing else changed is
+     * excluded, since it can't lose data). This is deliberately broader than "needs
+     * a change() rebuild": a pure unique/indexed toggle is included too, because it
+     * still becomes its own ALTER statement in `syncIndexes()` and can just as well
+     * reject existing data (a duplicate value can't become UNIQUE) even though it
+     * never touches the column's own definition. Everything else in a sync either
+     * adds new data-free columns or drops columns the user already confirmed.
+     *
+     * @param  array<string, mixed>  $from
+     * @param  array<string, mixed>  $to
+     * @return list<array{from: array<string, mixed>, to: array<string, mixed>}>
+     */
+    public function columnsChanged(array $from, array $to): array
+    {
+        $from = $this->shapes->normalize($from);
+        $to = $this->shapes->normalize($to);
+
+        $fromColumns = collect($from['columns'])->keyBy('column_id');
+        $toColumns = collect($to['columns'])->keyBy('column_id');
+
+        $pairs = [];
+
+        foreach ($toColumns->keys()->intersect($fromColumns->keys()) as $id) {
+            $fromColumn = $fromColumns[$id];
+            $toColumn = $toColumns[$id];
+
+            if ($this->columnDiffers($fromColumn, $toColumn)) {
+                $pairs[] = ['from' => $fromColumn, 'to' => $toColumn];
+            }
+        }
+
+        return $pairs;
+    }
+
+    /**
      * Modify an existing column in place, preserving the data it already holds.
      *
      * @param  array<string, mixed>  $from
