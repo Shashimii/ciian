@@ -165,7 +165,7 @@ Tags are always rendered as **pill badges** via `TagBadge` (`@/components/tag-ba
 | Folder | Contents | DB row in `ciian_cmp`? | In the builder palette? |
 |--------|----------|------------------------|--------------------------|
 | `core/` | Everything Ciian uses internally: app chrome, `DataTable`, `Modal`, `FormSidebar`, auth and settings widgets. Hand-coded, never placed by a user. | No | No |
-| `default/` | Reusable builder blocks shipped with Ciian, seeded by `CiianComponentSeeder`. | Yes, seeded with `can_delete: false` | Yes |
+| `default/` | Reusable builder blocks shipped with Ciian, seeded by `CiianComponentSeeder`. None exist yet. | Yes, seeded with `can_delete: false` | Yes |
 | `custom/` | Builder blocks uploaded by a developer. **Gitignored** — uploads are runtime artifacts, like `app/Models/Systems`. Empty until the upload flow exists. | Yes, one row each | Yes |
 | `ui/` | shadcn/Radix primitives. Tool-managed — `components.json` points its `ui` alias here, and `npx shadcn add` writes here. | No | No |
 

@@ -2,9 +2,11 @@
 
 > **Status: partly implemented.**
 >
-> **Exists:** the `ciian_cmp` table, `App\Models\Ciian\Component\Component` (with `definition()`), `Database\Seeders\CiianComponentSeeder` seeding the Button block, `ComponentFactory`, the `components.manage` permission, a read-only index at `/admin/components`, an upload page at `/admin/components/create`, and the `resources/js/components/` split into `core/`, `default/`, `custom/` and `ui/`.
+> **Exists:** the `ciian_cmp` table, `App\Models\Ciian\Component\Component` (with `definition()`), `Database\Seeders\CiianComponentSeeder` (the mechanism for default blocks — currently seeding none), `ComponentFactory`, the `components.manage` permission, an index at `/admin/components`, a detail page with a live property inspector, a working upload at `/admin/components/create`, and the `resources/js/components/` split into `core/`, `default/`, `custom/` and `ui/`.
 >
-> **Does not exist yet:** the upload endpoint itself — nothing is parsed, validated, generated or saved server-side. And **nothing renders a component from its stored `tsx` yet**; how that source becomes a live React component is still an open decision.
+> **Does not exist yet:** editing or deleting a component after upload, any publish/sync flow (an upload is written straight out as published), and the builder that places blocks on a page. No default blocks ship yet either.
+>
+> **How rendering works:** a component renders from the **file** Ciian generated for it, resolved by slug through `resources/js/lib/block-registry.ts`. The stored `tsx` is the definition of record, never what the browser executes — nothing compiles it at runtime. A file added since the last build only appears once the dev server picks it up or the app is rebuilt.
 >
 > Treat the rest of this document as the design contract, not as a description of current behaviour.
 
