@@ -157,3 +157,7 @@ Tags are always rendered as **pill badges** via `TagBadge` (`@/components/tag-ba
 ## Navigation
 
 - Use Inertia `<Link>` (not `<a>`) for internal navigation.
+
+## Wayfinder
+
+- Regenerate typed routes with **`php artisan wayfinder:generate --with-form`**. The flag is required: `vite.config.ts` sets `formVariants: true`, but the Artisan command does not read that config and defaults the flag off, so a bare run silently strips the `.form` variant off every route and breaks every form page at once. See `.ai/fixes/wayfinder-form-variants.md`.
