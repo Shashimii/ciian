@@ -91,7 +91,8 @@ class GenerateEloquentModel
         $fillable = $this->fillableColumns($columns);
         $properties = $this->propertyLines($columns, (bool) ($shape['timestamps'] ?? true));
         $relations = $this->belongsToRelations($columns);
-        $imports = $this->collectImports($relations, $shape, $columns);
+        $relatedNames = $this->resolveRelatedClassNames($relations, (string) $target['short']);
+        $imports = $this->collectImports($relations, $relatedNames, (string) $target['namespace']);
         $casts = $this->castEntries($columns);
         $usesSoftDeletes = $this->hasSoftDeletes($columns);
         $timestamps = (bool) ($shape['timestamps'] ?? true);
@@ -114,7 +115,8 @@ class GenerateEloquentModel
 
         $relationPropertyLines = [];
         foreach ($relations as $relation) {
-            $relationPropertyLines[] = " * @property-read \\{$relation['related']}|null \${$relation['method']}";
+            $related = $relatedNames[$relation['related']];
+            $relationPropertyLines[] = " * @property-read {$related}|null \${$relation['method']}";
         }
 
         $relationPropertyBlock = $relationPropertyLines === []
@@ -131,16 +133,11 @@ class GenerateEloquentModel
             $body[] = '';
         }
 
-        $body[] = '    /**';
-        $body[] = '     * @var string';
-        $body[] = '     */';
+        // Both properties are self-describing; a @var block on them is pure noise.
         $body[] = "    protected \$table = '{$target['table']}';";
         $body[] = '';
 
         if (! $timestamps) {
-            $body[] = '    /**';
-            $body[] = '     * @var bool';
-            $body[] = '     */';
             $body[] = '    public $timestamps = false;';
             $body[] = '';
         }
@@ -165,16 +162,16 @@ class GenerateEloquentModel
                 $body[] = '';
             }
 
-            $related = $relation['related'];
+            $related = $relatedNames[$relation['related']];
             $method = $relation['method'];
             $foreignKey = $relation['foreign_key'];
 
             $body[] = '    /**';
-            $body[] = "     * @return BelongsTo<\\{$related}, \$this>";
+            $body[] = "     * @return BelongsTo<{$related}, \$this>";
             $body[] = '     */';
             $body[] = "    public function {$method}(): BelongsTo";
             $body[] = '    {';
-            $body[] = "        return \$this->belongsTo(\\{$related}::class, '{$foreignKey}');";
+            $body[] = "        return \$this->belongsTo({$related}::class, '{$foreignKey}');";
             $body[] = '    }';
         }
 
@@ -306,6 +303,9 @@ class GenerateEloquentModel
         // Collapse the blank-line gap the removed method left behind.
         $source = preg_replace("/\n{3,}/", "\n\n", $source) ?? $source;
 
+        // Removing the last method leaves the class body ending on a blank line.
+        $source = preg_replace("/\n+\}\n*$/", "\n}\n", $source) ?? $source;
+
         File::put($path, $source);
     }
 
@@ -365,13 +365,21 @@ class GenerateEloquentModel
     {
         $source = File::get($path);
 
+        // This writes into a file whose imports are unknown — it may be hand-written —
+        // so the related class stays fully qualified unless it lives in the same
+        // namespace as the parent, where the short name resolves without an import.
+        $related = preg_match('/^namespace\s+([^;]+);/m', $source, $matches) === 1
+            && trim($matches[1]) === $this->namespaceOf($relatedClass)
+                ? class_basename($relatedClass)
+                : '\\'.$relatedClass;
+
         $methodBody = implode("\n", [
             '    /**',
-            "     * @return HasMany<\\{$relatedClass}, \$this>",
+            "     * @return HasMany<{$related}, \$this>",
             '     */',
             "    public function {$method}(): HasMany",
             '    {',
-            "        return \$this->hasMany(\\{$relatedClass}::class, '{$foreignKey}');",
+            "        return \$this->hasMany({$related}::class, '{$foreignKey}');",
             '    }',
         ]);
 
@@ -392,7 +400,7 @@ class GenerateEloquentModel
             $source = preg_replace('/\n\}\s*$/', "\n\n".$methodBody."\n}\n", $source, 1) ?? $source;
         }
 
-        $docLine = " * @property-read \\Illuminate\\Database\\Eloquent\\Collection<int, \\{$relatedClass}> \${$method}";
+        $docLine = " * @property-read \\Illuminate\\Database\\Eloquent\\Collection<int, {$related}> \${$method}";
         if (! str_contains($source, '$'.$method) && preg_match('/\/\*\*(.*?)\*\//s', $source, $docMatch) === 1) {
             $updatedDoc = rtrim($docMatch[1])."\n{$docLine}\n ";
             $source = preg_replace('/\/\*\*.*?\*\//s', '/**'.$updatedDoc.'*/', $source, 1) ?? $source;
@@ -543,12 +551,50 @@ class GenerateEloquentModel
     }
 
     /**
+     * How each related model is written in the generated file: its short name when
+     * that name can be imported unambiguously, otherwise a fully qualified name.
+     *
+     * Two related models can share a base name across namespaces (a system's own
+     * `Role` alongside `App\Models\Ciian\Role`), and importing both would be a fatal
+     * redeclaration. The base name can equally collide with the model's own class or
+     * with the imports every generated model already carries.
+     *
      * @param  list<array{method: string, foreign_key: string, related: class-string, related_table: string}>  $relations
-     * @param  array<string, mixed>  $shape
-     * @param  list<array<string, mixed>>  $columns
+     * @return array<string, string> related FQN => reference to write
+     */
+    private function resolveRelatedClassNames(array $relations, string $short): array
+    {
+        $reserved = ['Fillable', 'Model', 'BelongsTo', 'HasMany', 'SoftDeletes', $short];
+
+        $classes = array_values(array_unique(array_map(
+            static fn (array $relation): string => $relation['related'],
+            $relations,
+        )));
+
+        $counts = array_count_values(array_map(
+            static fn (string $class): string => class_basename($class),
+            $classes,
+        ));
+
+        $names = [];
+
+        foreach ($classes as $class) {
+            $basename = class_basename($class);
+
+            $names[$class] = $counts[$basename] > 1 || in_array($basename, $reserved, true)
+                ? '\\'.$class
+                : $basename;
+        }
+
+        return $names;
+    }
+
+    /**
+     * @param  list<array{method: string, foreign_key: string, related: class-string, related_table: string}>  $relations
+     * @param  array<string, string>  $relatedNames
      * @return list<string>
      */
-    private function collectImports(array $relations, array $shape, array $columns): array
+    private function collectImports(array $relations, array $relatedNames, string $namespace): array
     {
         $imports = [
             'Illuminate\\Database\\Eloquent\\Attributes\\Fillable',
@@ -559,15 +605,29 @@ class GenerateEloquentModel
             $imports[] = 'Illuminate\\Database\\Eloquent\\Relations\\BelongsTo';
         }
 
-        foreach ($relations as $relation) {
-            $imports[] = $relation['related'];
-        }
+        foreach ($relatedNames as $class => $reference) {
+            // Fully qualified references were kept that way because their import
+            // would clash, and a class in this model's own namespace resolves
+            // without one — importing either would just be noise.
+            if (str_starts_with($reference, '\\') || $this->namespaceOf($class) === $namespace) {
+                continue;
+            }
 
-        if ($this->castEntries($columns) !== [] || $this->propertyLines($columns, (bool) ($shape['timestamps'] ?? true)) !== []) {
-            // Carbon referenced via FQCN in docblock; no import required.
+            $imports[] = $class;
         }
 
         return $imports;
+    }
+
+    /**
+     * The namespace part of a fully qualified class name, without leading slash.
+     */
+    private function namespaceOf(string $class): string
+    {
+        $class = ltrim($class, '\\');
+        $position = strrpos($class, '\\');
+
+        return $position === false ? '' : substr($class, 0, $position);
     }
 
     /**
