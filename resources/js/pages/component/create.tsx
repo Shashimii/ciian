@@ -13,9 +13,9 @@ export default function ComponentCreate({ propertyTypes, uploaded }: Props) {
         <>
             <Head title="Upload component" />
 
-            {/* Same panel sizing as the table editor: capped and independently
-                scrolling only at xl, where the panels sit side by side. */}
-            <div className="flex flex-col px-4 py-6 xl:h-full xl:overflow-hidden">
+            {/* Full-bleed at xl: the preview canvas fills the content area and the
+                panels float over it. Below xl the normal page padding returns. */}
+            <div className="flex flex-col px-4 py-6 xl:h-full xl:overflow-hidden xl:p-0">
                 <ComponentUpload
                     propertyTypes={propertyTypes}
                     uploaded={uploaded}

@@ -386,12 +386,19 @@ export default function ComponentUpload({ propertyTypes, uploaded }: Props) {
                 submit();
             }}
         >
-            <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
-                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm">
-                    <div className="border-b px-4 py-3">
+            {/* At xl the preview canvas fills the whole content area and the two
+                panels float over it, Canva-style. Below xl they stack as blocks. */}
+            <div className="relative flex min-h-0 flex-1 flex-col gap-4 xl:block">
+                <div className="flex min-h-0 flex-col rounded-xl border bg-card/95 shadow-sm backdrop-blur xl:absolute xl:top-4 xl:left-4 xl:z-10 xl:max-h-[calc(100%-2rem)] xl:w-80">
+                    <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">
                             Component File
                         </h2>
+                        {file?.definition != null && (
+                            <Badge variant={isValid ? 'default' : 'secondary'}>
+                                {isValid ? 'Valid' : 'Incomplete'}
+                            </Badge>
+                        )}
                     </div>
 
                     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
@@ -540,16 +547,16 @@ export default function ComponentUpload({ propertyTypes, uploaded }: Props) {
                     </div>
                 </div>
 
-                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm">
-                    <div className="flex items-center justify-between gap-2 border-b px-4 py-3">
-                        <h2 className="text-sm font-semibold">Preview</h2>
-                        {file?.definition != null && (
-                            <Badge variant={isValid ? 'default' : 'secondary'}>
-                                {isValid ? 'Valid' : 'Incomplete'}
-                            </Badge>
-                        )}
-                    </div>
-
+                {/* Padded past the floating panels at xl so the component centres in
+                    the visible middle, not behind a panel. */}
+                <section
+                    className="flex min-h-[24rem] flex-col rounded-xl border bg-muted/30 shadow-sm xl:absolute xl:inset-0 xl:rounded-none xl:border-0 xl:pr-[40rem] xl:pl-[22rem] xl:shadow-none"
+                    style={{
+                        backgroundImage:
+                            'radial-gradient(var(--border) 1px, transparent 1px)',
+                        backgroundSize: '20px 20px',
+                    }}
+                >
                     <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 overflow-y-auto p-6 text-center">
                         {preview ? (
                             // The real component, rendered from its generated file with
@@ -587,9 +594,11 @@ export default function ComponentUpload({ propertyTypes, uploaded }: Props) {
                             </>
                         )}
                     </div>
-                </div>
+                </section>
 
-                <div className="flex min-h-0 flex-col rounded-xl border bg-card shadow-sm">
+                {/* Pinned top and bottom rather than sized to content: a code editor is
+                    a viewport into the file, and any real definition outruns the screen. */}
+                <div className="flex min-h-0 flex-col overflow-hidden rounded-xl border bg-card/95 shadow-sm backdrop-blur xl:absolute xl:top-4 xl:right-4 xl:bottom-4 xl:z-10 xl:w-[38rem]">
                     <div className="border-b px-4 py-3">
                         <h2 className="text-sm font-semibold">YAML</h2>
                     </div>
