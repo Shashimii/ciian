@@ -10,6 +10,8 @@
 /resources/js/actions
 /resources/js/routes
 /resources/js/wayfinder
+/resources/js/components/custom/*
+!/resources/js/components/custom/.gitkeep
 /vendor
 .DS_Store
 .env
