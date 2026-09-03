@@ -52,6 +52,8 @@ Route::prefix('admin')->group(function () {
 
         Route::middleware('permission:components.manage')->group(function () {
             Route::get('components', [ComponentController::class, 'index'])->name('components.index');
+            Route::get('components/create', [ComponentController::class, 'create'])->name('components.create');
+            Route::post('components', [ComponentController::class, 'store'])->name('components.store');
         });
     });
 });

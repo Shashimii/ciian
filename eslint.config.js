@@ -112,6 +112,9 @@ export default [
             'vite.config.ts',
             'resources/js/actions/**',
             'resources/js/components/ui/*',
+            // Uploaded components are written at runtime and gitignored; they are
+            // validated on upload, not held to this repo's lint rules.
+            'resources/js/components/custom/*',
             'resources/js/routes/**',
             'resources/js/wayfinder/**',
         ],
