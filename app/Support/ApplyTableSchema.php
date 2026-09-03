@@ -159,6 +159,79 @@ class ApplyTableSchema
     }
 
     /**
+     * Undo a sync that failed partway, returning the physical table to $from.
+     *
+     * DDL is not transactional on MySQL/MariaDB, so a sync that throws can leave the
+     * table stranded between the two shapes, with `pub_shape` then describing columns
+     * that no longer match reality. Rather than introspect column definitions back out
+     * of the driver — which differs per driver and maps poorly onto our own types —
+     * this reconstructs what is live from the only two forms a column can currently
+     * hold (its $from form or its $to form), asking the database which name is present,
+     * then syncs that reconstruction back to $from.
+     *
+     * Data in a column the failed sync already dropped does not come back; the column
+     * is restored empty. That is unavoidable without a full table copy.
+     *
+     * @param  array<string, mixed>  $from
+     * @param  array<string, mixed>  $to
+     */
+    public function revert(array $from, array $to): void
+    {
+        $from = $this->shapes->normalize($from);
+        $to = $this->shapes->normalize($to);
+
+        if (! Schema::hasTable($from['tbl_db_name'])) {
+            return;
+        }
+
+        $this->sync($this->liveShape($from, $to), $from);
+    }
+
+    /**
+     * Best-effort reconstruction of the shape the physical table currently holds,
+     * built only from definitions already known to the caller. Used by revert().
+     *
+     * Both arguments must already be normalized.
+     *
+     * @param  array{tbl_name: string, tbl_db_name: string, tbl_sys: string, columns: list<array<string, mixed>>, timestamps: bool, primary?: list<string>}  $from
+     * @param  array{tbl_name: string, tbl_db_name: string, tbl_sys: string, columns: list<array<string, mixed>>, timestamps: bool, primary?: list<string>}  $to
+     * @return array<string, mixed>
+     */
+    private function liveShape(array $from, array $to): array
+    {
+        $tableName = $from['tbl_db_name'];
+        $fromColumns = collect($from['columns'])->keyBy('column_id');
+        $toColumns = collect($to['columns'])->keyBy('column_id');
+
+        $columns = [];
+
+        foreach ($fromColumns->keys()->merge($toColumns->keys())->unique() as $id) {
+            // The $to form is tried first: wherever the sync managed to rename or
+            // rebuild a column, that is the form now in the database. Where it did
+            // neither, both forms carry the same name and describe it equally well.
+            foreach ([$toColumns[$id] ?? null, $fromColumns[$id] ?? null] as $candidate) {
+                if ($candidate === null) {
+                    continue;
+                }
+
+                if (Schema::hasColumn($tableName, (string) $candidate['name'])) {
+                    $columns[] = $candidate;
+
+                    break;
+                }
+            }
+        }
+
+        return [
+            'tbl_name' => $from['tbl_name'],
+            'tbl_db_name' => $tableName,
+            'tbl_sys' => $from['tbl_sys'],
+            'columns' => $columns,
+            'timestamps' => Schema::hasColumn($tableName, 'created_at'),
+        ];
+    }
+
+    /**
      * Column names that a sync from one shape to another would drop, discarding their data.
      *
      * @param  array<string, mixed>  $from

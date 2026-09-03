@@ -85,14 +85,12 @@ class PublishTable
         }
 
         $tableName = $normalized['tbl_db_name'];
+        $publishedShape = is_array($table->pub_shape) ? $table->pub_shape : [];
         $created = false;
 
         try {
             if ($isSync) {
-                $this->schema->sync(
-                    is_array($table->pub_shape) ? $table->pub_shape : [],
-                    $normalized,
-                );
+                $this->schema->sync($publishedShape, $normalized);
             } else {
                 $this->schema->create($normalized);
                 $created = true;
@@ -111,15 +109,55 @@ class PublishTable
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
+            $restoreFailure = null;
+
             if ($created && Schema::hasTable($tableName)) {
                 Schema::drop($tableName);
+            } elseif ($isSync && $publishedShape !== []) {
+                // DDL is not transactional on MySQL/MariaDB, so a sync that throws
+                // partway leaves the table stranded between the two shapes while
+                // pub_shape still describes the old one. Put the table back on the
+                // published shape so the two never disagree; the draft in unpub_shape
+                // is untouched, so the user can fix it and sync again.
+                try {
+                    $this->schema->revert($publishedShape, $normalized);
+                } catch (Throwable $restoreException) {
+                    $restoreFailure = $restoreException->getMessage();
+                }
             }
 
             throw ValidationException::withMessages([
-                'shape' => $exception instanceof RuntimeException
-                    ? $exception->getMessage()
-                    : __('Publishing failed: :message', ['message' => $exception->getMessage()]),
+                'shape' => $this->failureMessage($exception, $isSync, $restoreFailure),
             ]);
         }
+    }
+
+    /**
+     * Explain a failed publish or sync, and say what state the table was left in —
+     * the user's next move differs entirely depending on whether it was restored.
+     */
+    private function failureMessage(Throwable $exception, bool $isSync, ?string $restoreFailure): string
+    {
+        $reason = $exception->getMessage();
+
+        if (! $isSync) {
+            return $exception instanceof RuntimeException
+                ? $reason
+                : __('Publishing failed: :message', ['message' => $reason]);
+        }
+
+        if ($restoreFailure !== null) {
+            return __('Sync failed: :message', ['message' => $reason])
+                ."\n\n"
+                .__('The table could not be restored to its published state either: :message', [
+                    'message' => $restoreFailure,
+                ])
+                ."\n\n"
+                .__('It may now be partly changed. Compare it against the published shape before syncing again.');
+        }
+
+        return __('Sync failed, so the table was left on its published shape. :message', [
+            'message' => $reason,
+        ]);
     }
 }
