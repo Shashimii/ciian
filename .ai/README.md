@@ -18,6 +18,7 @@ every agent to read `.ai/rules/index.md` before creating or editing a file.
 | `context/` | What Ciian is (`overview.md`) and the build roadmap (`flow.md`). |
 | `shapes/` | JSON contracts: `db_table_format.md` (live), `cmp_format.md` (planned). |
 | `chores/` | Step-by-step recipes for rebuilding a feature from scratch. |
+| `fixes/` | Post-mortems for non-obvious bugs: symptom, root cause, fix, how to avoid a repeat. |
 | `skills/` | Canonical source for this project's hand-written agent skills. |
 
 ## Rules
