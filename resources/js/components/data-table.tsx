@@ -5,6 +5,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Loader2,
+    Lock,
     RefreshCw,
     Search,
     Trash2,
@@ -47,6 +48,8 @@ type Props<T> = {
     onSelectedKeysChange?: (keys: Set<string>) => void;
     onDelete?: (row: T) => void;
     canDelete?: (row: T) => boolean;
+    /** Marks a row undeletable: the delete action becomes a disabled lock icon. */
+    isProtected?: (row: T) => boolean;
     /** Row key currently deleting; every row's delete action is disabled and it spins. */
     deletingKey?: string | null;
     onPublish?: (row: T) => void;
@@ -100,6 +103,7 @@ export default function DataTable<T>({
     onSelectedKeysChange,
     onDelete,
     canDelete,
+    isProtected,
     deletingKey = null,
     onPublish,
     canPublish,
@@ -383,36 +387,38 @@ export default function DataTable<T>({
                                                                 <TooltipTrigger
                                                                     asChild
                                                                 >
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="size-8"
-                                                                        aria-label={
-                                                                            busy
-                                                                                ? `${label}ing…`
-                                                                                : label
-                                                                        }
-                                                                        disabled={
-                                                                            publishingKey !==
-                                                                            null
-                                                                        }
-                                                                        onClick={() =>
-                                                                            onPublish(
-                                                                                row,
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        {busy ? (
-                                                                            <RefreshCw className="size-4 animate-spin" />
-                                                                        ) : isSync?.(
-                                                                              row,
-                                                                          ) ? (
-                                                                            <RefreshCw className="size-4" />
-                                                                        ) : (
-                                                                            <Upload className="size-4" />
-                                                                        )}
-                                                                    </Button>
+                                                                    <span className="inline-flex">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="size-8"
+                                                                            aria-label={
+                                                                                busy
+                                                                                    ? `${label}ing…`
+                                                                                    : label
+                                                                            }
+                                                                            disabled={
+                                                                                publishingKey !==
+                                                                                null
+                                                                            }
+                                                                            onClick={() =>
+                                                                                onPublish(
+                                                                                    row,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            {busy ? (
+                                                                                <RefreshCw className="size-4 animate-spin" />
+                                                                            ) : isSync?.(
+                                                                                  row,
+                                                                              ) ? (
+                                                                                <RefreshCw className="size-4" />
+                                                                            ) : (
+                                                                                <Upload className="size-4" />
+                                                                            )}
+                                                                        </Button>
+                                                                    </span>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>
                                                                     {busy
@@ -436,39 +442,54 @@ export default function DataTable<T>({
                                                         const busy =
                                                             deletingKey ===
                                                             getRowKey(row);
+                                                        const protectedRow =
+                                                            isProtected?.(
+                                                                row,
+                                                            ) ?? false;
                                                         const label = busy
                                                             ? 'Deleting…'
-                                                            : 'Delete';
+                                                            : protectedRow
+                                                              ? 'Protected Table'
+                                                              : 'Delete';
 
                                                         return (
                                                             <Tooltip>
+                                                                {/* Button carries `disabled:pointer-events-none`, so a
+                                                                    disabled trigger never receives hover. The span keeps
+                                                                    taking pointer events, so protected and busy rows can
+                                                                    still explain themselves on hover. */}
                                                                 <TooltipTrigger
                                                                     asChild
                                                                 >
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="size-8 text-destructive hover:bg-destructive/10"
-                                                                        aria-label={
-                                                                            label
-                                                                        }
-                                                                        disabled={
-                                                                            deletingKey !==
-                                                                            null
-                                                                        }
-                                                                        onClick={() =>
-                                                                            onDelete(
-                                                                                row,
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        {busy ? (
-                                                                            <Loader2 className="size-4 animate-spin" />
-                                                                        ) : (
-                                                                            <Trash2 className="size-4" />
-                                                                        )}
-                                                                    </Button>
+                                                                    <span className="inline-flex">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="size-8 text-destructive hover:bg-destructive/10"
+                                                                            aria-label={
+                                                                                label
+                                                                            }
+                                                                            disabled={
+                                                                                protectedRow ||
+                                                                                deletingKey !==
+                                                                                    null
+                                                                            }
+                                                                            onClick={() =>
+                                                                                onDelete(
+                                                                                    row,
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            {busy ? (
+                                                                                <Loader2 className="size-4 animate-spin" />
+                                                                            ) : protectedRow ? (
+                                                                                <Lock className="size-4" />
+                                                                            ) : (
+                                                                                <Trash2 className="size-4" />
+                                                                            )}
+                                                                        </Button>
+                                                                    </span>
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>
                                                                     {label}

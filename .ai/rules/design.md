@@ -9,6 +9,7 @@ paths:
 
 - Keep chrome consistent across related surfaces: same control placement, grouping, sizing, and hover behavior.
 - Icon-only buttons **must** have a hover tooltip (use `Tooltip` + `TooltipTrigger` + `TooltipContent`) with a short label matching `aria-label`.
+- **A `disabled` button cannot be a `TooltipTrigger` on its own.** `Button` carries `disabled:pointer-events-none`, so a disabled trigger never receives hover and the tooltip silently never opens — exactly when the user most needs to know *why* the control is dead. Wrap it: `<TooltipTrigger asChild><span className="inline-flex"><Button disabled …/></span></TooltipTrigger>`. The span keeps taking pointer events; keep `aria-label` on the button so assistive tech still reads the reason.
 - Group related toolbar actions in one bordered bar (`rounded-lg border bg-background/90 p-1 shadow-sm backdrop-blur`) instead of scattering separate controls.
 - Reuse the same pattern when a control appears in more than one mode (e.g. map and list): same corner, same container styles, same tooltip wording.
 - Prefer existing shared components (`ViewModeToggle`, `Heading`, `FormSidebar`, `DataTable`, `Modal` / `ConfirmDialog`, `components/ui/*`) over one-off variants.
@@ -48,6 +49,7 @@ Use the shared `DataTable` (`@/components/data-table`) for list indexes.
 - Pagination: client-side by default (`pageSize`, default `10`) with Previous / Next and result range.
 - Selection (when needed): enable `selection` so the checkbox column is **first**.
 - Row delete (when needed): pass `onDelete`. The delete column has a **blank header**, a centered `Trash2` icon button (`text-destructive`, `hover:bg-destructive/10`), tooltip/`aria-label` **Delete**, and `stopPropagation` so it does not fire `onRowClick`.
+- Protected rows: pass `isProtected` (Tables uses `(row) => !row.can_delete`). The action swaps `Trash2` for `Lock` and the button is **disabled**, with tooltip/`aria-label` **Protected Table** — the row can never be deleted, so the control must not look clickable. Because it is disabled, its tooltip needs the span wrapper described under Uniformity.
 - Row publish (when needed): pass `onPublish` / `canPublish`. Unpublished rows use an `Upload` icon with tooltip/`aria-label` **Publish**. Published rows with pending `unpub_shape` changes use `isSync` so the action shows a `RefreshCw` icon with tooltip/`aria-label` **Sync**. Show for unpublished tables and for published tables with pending changes.
 - Prefer `onRowClick` to open edit in a `FormSidebar` rather than a separate edit icon column.
 - Do **not** use `window.confirm` / `alert` for delete — use `ConfirmDialog`.
