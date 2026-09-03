@@ -16,6 +16,7 @@ class SystemDefaultsSeeder extends Seeder
     {
         $this->seedConfig();
         $this->call(CiianInternalTableSeeder::class);
+        $this->call(CiianComponentSeeder::class);
         $this->seedPermissions();
         $this->seedRoles();
     }
@@ -94,6 +95,11 @@ class SystemDefaultsSeeder extends Seeder
                 'name' => 'Manage Tables',
                 'slug' => 'tables.manage',
                 'description' => 'Create, edit, publish, and delete database table shapes.',
+            ],
+            [
+                'name' => 'Manage Components',
+                'slug' => 'components.manage',
+                'description' => 'Create, edit, publish, and delete UI building blocks.',
             ],
             [
                 'name' => 'Manage Systems',
