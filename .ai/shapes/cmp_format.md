@@ -1,6 +1,12 @@
 # Component Shape Format
 
-> **Status: planned, not yet implemented.** Nothing described here exists in the codebase yet — there is no `ciian_cmp` table, no `CiianComponentSeeder`, no `App\Models\Ciian\Component\Component`, and no `resources/js/pages/component/`. Treat this as the design contract for the Component Engine, not as a description of current behaviour.
+> **Status: partly implemented.**
+>
+> **Exists:** the `ciian_cmp` table, `App\Models\Ciian\Component\Component` (with `definition()`), `Database\Seeders\CiianComponentSeeder` seeding the Button block, `ComponentFactory`, the `components.manage` permission, and a read-only index at `/admin/components` (`resources/js/pages/component/index.tsx`).
+>
+> **Does not exist yet:** any publish/sync engine, shape validation, editing or upload UI, and `resources/js/components/blocks/`. Crucially, **nothing renders a component from its stored `tsx` yet** — how that source becomes a live React component (generate a file on publish, compile in the browser, or ship checked-in blocks) is still an open decision. Until it is made, `info.component` is metadata only.
+>
+> Treat the rest of this document as the design contract, not as a description of current behaviour.
 
 This document explains the JSON Ciian stores for a **UI building-block component**.
 
@@ -30,6 +36,7 @@ Each `ciian_cmp` row has table columns **and** a shape JSON:
 | `slug` | Stable unique id (e.g. `button`) |
 | `type` | `"block"` for building blocks |
 | `status` | `unpublished` / `published` |
+| `can_delete` | `false` for seeded default blocks, which ship with the platform and may already be placed on pages. Mirrors the same column on the table stores. |
 | `unpub_shape` | Working draft definition |
 | `pub_shape` | Last published definition |
 | `thumbnail` | Optional preview image path |
