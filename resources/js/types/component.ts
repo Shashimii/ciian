@@ -46,3 +46,12 @@ export type ComponentRow = {
     /** The definition's property map, so a preview can apply its defaults. */
     properties: Record<string, ComponentProperty>;
 };
+
+/**
+ * A single component with its full definition. The index omits `tsx`, which would
+ * mean shipping every component's source just to list them.
+ */
+export type ComponentDetail = ComponentRow & {
+    information: ComponentInformation;
+    tsx: string;
+};

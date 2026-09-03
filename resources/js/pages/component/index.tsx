@@ -1,11 +1,17 @@
-import { Head, Link, resetLayoutProps, setLayoutProps } from '@inertiajs/react';
+import {
+    Head,
+    Link,
+    resetLayoutProps,
+    router,
+    setLayoutProps,
+} from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import DataTable from '@/components/core/data-table';
 import type { DataTableColumn } from '@/components/core/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { create, index as componentsIndex } from '@/routes/components';
+import { create, index as componentsIndex, show } from '@/routes/components';
 import type { ComponentRow } from '@/types/component';
 
 type Props = {
@@ -117,6 +123,7 @@ export default function ComponentIndex({ components }: Props) {
                     getRowKey={(row) => row.key}
                     emptyMessage="No components yet."
                     searchPlaceholder="Search components…"
+                    onRowClick={(row) => router.visit(show(row.id))}
                 />
             </div>
         </>
