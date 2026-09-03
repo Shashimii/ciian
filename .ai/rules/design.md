@@ -119,6 +119,9 @@ When an entity has a changeable icon and a name field (roles, tables, map edit p
 - Pages use `AppLayout` (via the global resolver) with a `PageName.layout = { breadcrumbs: [...] }` static.
 - Full-screen experiences (e.g. the editor) opt out of `AppLayout` in `app.tsx` and provide their own chrome.
 - Wrap page content in `px-4 py-6` (or a centered `max-w-*` for forms).
+- **The document does not scroll.** `AppShell` pins the sidebar shell to `h-svh`, so the sidebar and breadcrumb header stay fixed and only the main content region scrolls. That region is the single `overflow-y-auto` element in `AppSidebarLayout`; it carries `min-h-0 flex-1` (without `min-h-0` a flex child refuses to shrink below its content and scrolls nothing) and the `scroll-region` attribute, which is how Inertia finds a scroll container to reset between visits now that the body no longer scrolls. Keep exactly one such region — nesting more makes scroll position ambiguous.
+- A page normally adds no height cap and no `overflow-y` of its own — the layout owns scrolling. The exception is a **panel editor** (`table/create`, `table/update`), where side-by-side panels each scroll independently: cap it with `xl:h-full xl:overflow-hidden` so it fills the scroll region, and scope both to `xl` so the panels stack and scroll normally on narrower screens. Use `h-full`, never `h-[calc(100svh-…)]` — a hardcoded chrome offset silently clips content whenever the header height or breakpoint assumption stops holding.
+- When containing horizontal overflow, use **`overflow-x-hidden`, never `overflow-x-clip`**. CSS resolves an unspecified `overflow-y: visible` against a `clip` sibling axis by forcing it to `clip` too, which silently disables vertical scrolling and cuts off everything past the fold. `hidden` forces the other axis to `auto` instead.
 
 ## Components & styling
 

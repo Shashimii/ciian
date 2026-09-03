@@ -12,12 +12,27 @@ export default function AppSidebarLayout({
     return (
         <AppShell variant="sidebar">
             <AppSidebar />
-            <AppContent variant="sidebar" className="min-w-0 overflow-x-clip">
+            {/* min-h-0 drops the inset's own min-h-svh so it stretches to the pinned
+                shell instead of overflowing it, and overflow-hidden keeps the scroll
+                inside the region below rather than on the document. */}
+            <AppContent
+                variant="sidebar"
+                className="min-h-0 min-w-0 overflow-hidden"
+            >
                 <AppSidebarHeader
                     breadcrumbs={breadcrumbs}
                     headerActions={headerActions}
                 />
-                {children}
+                {/* The only scrolling element: the header above it stays fixed. The
+                    `scroll-region` attribute is what tells Inertia to reset/preserve
+                    this container's offset across visits, since the document itself
+                    no longer scrolls. */}
+                <div
+                    className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+                    scroll-region=""
+                >
+                    {children}
+                </div>
             </AppContent>
         </AppShell>
     );

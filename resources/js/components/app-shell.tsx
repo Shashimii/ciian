@@ -17,5 +17,12 @@ export function AppShell({ children, variant = 'sidebar' }: Props) {
         );
     }
 
-    return <SidebarProvider defaultOpen={isOpen}>{children}</SidebarProvider>;
+    // Pin the shell to the viewport so the sidebar and header stay put and only
+    // the main content scrolls. Without h-svh the wrapper's min-h-svh lets the
+    // whole document grow and scroll instead.
+    return (
+        <SidebarProvider defaultOpen={isOpen} className="h-svh">
+            {children}
+        </SidebarProvider>
+    );
 }
