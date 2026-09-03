@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Ciian\Component\ComponentController;
 use App\Http\Controllers\Ciian\Database\TableController;
 use App\Http\Controllers\Ciian\System\SystemController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +48,10 @@ Route::prefix('admin')->group(function () {
                 ->name('tables.system.publish');
             Route::delete('tables/system/{systemTable}', [TableController::class, 'destroySystem'])
                 ->name('tables.system.destroy');
+        });
+
+        Route::middleware('permission:components.manage')->group(function () {
+            Route::get('components', [ComponentController::class, 'index'])->name('components.index');
         });
     });
 });
