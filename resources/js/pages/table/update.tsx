@@ -22,7 +22,11 @@ export default function TableUpdate({
         <>
             <Head title={`Edit ${table.name}`} />
 
-            <div className="flex h-[calc(100svh-5rem)] flex-col overflow-hidden px-4 py-6">
+            {/* The three editor panels only scroll independently at xl, where they sit
+                side by side; there the form fills the layout's scroll region exactly.
+                Below xl they stack into one tall column, so the height cap comes off
+                and the layout's scroll region scrolls the page as a whole. */}
+            <div className="flex flex-col px-4 py-6 xl:h-full xl:overflow-hidden">
                 <TableForm
                     mode="edit"
                     table={table}
