@@ -158,19 +158,21 @@ Tags are always rendered as **pill badges** via `TagBadge` (`@/components/tag-ba
 
 - Use Inertia `<Link>` (not `<a>`) for internal navigation.
 
-## Builder blocks
+## Component directories
 
-Page-builder building blocks live under `resources/js/components/blocks/`, split three ways by **who owns the file**. Everything outside `blocks/` — the ~33 files at the top of `components/` and all of `components/ui/` — is ordinary application UI and is not a block.
+`resources/js/components/` has **no loose files at its root** — every component sits in one of four folders, chosen by who owns it:
 
 | Folder | Contents | DB row in `ciian_cmp`? | In the builder palette? |
 |--------|----------|------------------------|--------------------------|
-| `blocks/core/` | Internals the builder engine needs (slots, wrappers, placeholders). Hand-coded, never user-facing. | No | No |
-| `blocks/default/` | Reusable blocks shipped with Ciian, seeded by `CiianComponentSeeder`. | Yes, seeded with `can_delete: false` | Yes |
-| `blocks/custom/` | Blocks uploaded by a developer. Empty until the upload flow exists. | Yes, one row each | Yes |
+| `core/` | Everything Ciian uses internally: app chrome, `DataTable`, `Modal`, `FormSidebar`, auth and settings widgets. Hand-coded, never placed by a user. | No | No |
+| `default/` | Reusable builder blocks shipped with Ciian, seeded by `CiianComponentSeeder`. | Yes, seeded with `can_delete: false` | Yes |
+| `custom/` | Builder blocks uploaded by a developer. Empty until the upload flow exists. | Yes, one row each | Yes |
+| `ui/` | shadcn/Radix primitives. Tool-managed — `components.json` points its `ui` alias here, and `npx shadcn add` writes here. | No | No |
 
-- A block in `default/` **must** have a matching `ciian_cmp` row, and that row's `info.component` must be its real import path (e.g. `@/components/blocks/default/button`). A file with no row is invisible to the builder; a row pointing at a missing file cannot render.
-- Never put a `core/` block in `ciian_cmp`. It is engine machinery, not something a user places.
-- Do not add application chrome (headers, sidebars, dialogs) under `blocks/` — that belongs at the top level of `components/`.
+- Import internal components as `@/components/core/<name>` and primitives as `@/components/ui/<name>`. Never add a file directly at `@/components/<name>`.
+- A block in `default/` **must** have a matching `ciian_cmp` row whose `info.component` is its real import path (e.g. `@/components/default/button`). A file with no row is invisible to the builder; a row pointing at a missing file cannot render.
+- Never put a `core/` component in `ciian_cmp`. It is application machinery, not something a user places.
+- `components.json` aliases `components` to `@/components/core`, so a non-ui shadcn component lands in the right folder.
 
 ## Wayfinder
 
