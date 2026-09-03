@@ -1,5 +1,5 @@
 import { Head } from '@inertiajs/react';
-import TableForm from '@/components/table-form';
+import TableForm from '@/components/core/table-form';
 import { index as tablesIndex } from '@/routes/tables';
 import { edit as editInternal } from '@/routes/tables/internal';
 import { edit as editSystem } from '@/routes/tables/system';

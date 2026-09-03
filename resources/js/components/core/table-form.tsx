@@ -30,8 +30,8 @@ import {
     updateInternal,
     updateSystem,
 } from '@/actions/App/Http/Controllers/Ciian/Database/TableController';
-import InputError from '@/components/input-error';
-import JsonShapeEditor from '@/components/json-shape-editor';
+import InputError from '@/components/core/input-error';
+import JsonShapeEditor from '@/components/core/json-shape-editor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Combobox } from '@/components/ui/combobox';

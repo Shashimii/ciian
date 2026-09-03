@@ -17,7 +17,7 @@ use Illuminate\Database\Seeder;
  * and pages may already reference them.
  *
  * Each block's `info.component` points at its real file under
- * `resources/js/components/blocks/default/`; keep the two in step when either moves.
+ * `resources/js/components/default/`; keep the two in step when either moves.
  */
 class CiianComponentSeeder extends Seeder
 {
@@ -55,7 +55,7 @@ class CiianComponentSeeder extends Seeder
                 'slug' => 'button',
                 'category' => 'application',
                 'description' => 'Clickable action control',
-                'component' => '@/components/blocks/default/button',
+                'component' => '@/components/default/button',
             ],
             'properties' => [
                 'label' => [

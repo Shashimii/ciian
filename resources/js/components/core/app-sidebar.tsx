@@ -1,8 +1,8 @@
 import { Link } from '@inertiajs/react';
 import { Blocks, Boxes, Database, LayoutGrid } from 'lucide-react';
-import AppLogo from '@/components/app-logo';
-import { NavMain } from '@/components/nav-main';
-import { NavUser } from '@/components/nav-user';
+import AppLogo from '@/components/core/app-logo';
+import { NavMain } from '@/components/core/nav-main';
+import { NavUser } from '@/components/core/nav-user';
 import {
     Sidebar,
     SidebarContent,

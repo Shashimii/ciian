@@ -31,12 +31,7 @@ export default function JsonShapeEditor({
     };
 
     return (
-        <div
-            className={cn(
-                'min-h-0 flex-1 overflow-hidden',
-                className,
-            )}
-        >
+        <div className={cn('min-h-0 flex-1 overflow-hidden', className)}>
             <Editor
                 height={height}
                 language="json"

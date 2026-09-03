@@ -8,11 +8,11 @@ import {
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import DataTable from '@/components/data-table';
-import type { DataTableColumn } from '@/components/data-table';
-import FormSidebar from '@/components/form-sidebar';
-import InputError from '@/components/input-error';
-import TagBadge from '@/components/tag-badge';
+import DataTable from '@/components/core/data-table';
+import type { DataTableColumn } from '@/components/core/data-table';
+import FormSidebar from '@/components/core/form-sidebar';
+import InputError from '@/components/core/input-error';
+import TagBadge from '@/components/core/tag-badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
@@ -91,10 +91,7 @@ export default function SystemIndex({
         setLayoutProps({
             headerActions: (
                 <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        onClick={() => setCreateOpen(true)}
-                    >
+                    <Button type="button" onClick={() => setCreateOpen(true)}>
                         <Plus className="size-4" />
                         New system
                     </Button>
@@ -373,9 +370,7 @@ export default function SystemIndex({
                                         setIconTooltipOpen(false)
                                     }
                                     onClick={() =>
-                                        setShowIconPicker(
-                                            (current) => !current,
-                                        )
+                                        setShowIconPicker((current) => !current)
                                     }
                                 >
                                     {selectedCiianIcon && (

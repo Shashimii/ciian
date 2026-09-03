@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { useMemo } from 'react';
-import DataTable from '@/components/data-table';
-import type { DataTableColumn } from '@/components/data-table';
+import DataTable from '@/components/core/data-table';
+import type { DataTableColumn } from '@/components/core/data-table';
 import { Badge } from '@/components/ui/badge';
 import { index as componentsIndex } from '@/routes/components';
 import type { ComponentRow } from '@/types/component';

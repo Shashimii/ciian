@@ -1,8 +1,9 @@
 import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
-import AppLogo from '@/components/app-logo';
-import AppLogoIcon from '@/components/app-logo-icon';
-import { Breadcrumbs } from '@/components/breadcrumbs';
+import AppLogo from '@/components/core/app-logo';
+import AppLogoIcon from '@/components/core/app-logo-icon';
+import { Breadcrumbs } from '@/components/core/breadcrumbs';
+import { UserMenuContent } from '@/components/core/user-menu-content';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +29,6 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { UserMenuContent } from '@/components/user-menu-content';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
@@ -222,7 +222,9 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                                             alt={auth.user?.username}
                                         />
                                         <AvatarFallback className="rounded-lg bg-neutral-200 text-black dark:bg-neutral-700 dark:text-white">
-                                            {getInitials(auth.user?.username ?? '')}
+                                            {getInitials(
+                                                auth.user?.username ?? '',
+                                            )}
                                         </AvatarFallback>
                                     </Avatar>
                                 </Button>

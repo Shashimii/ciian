@@ -8,11 +8,11 @@ import {
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import DataTable from '@/components/data-table';
-import type { DataTableColumn } from '@/components/data-table';
-import { ConfirmDialog, Modal } from '@/components/modal';
-import PasswordInput from '@/components/password-input';
-import TagBadge from '@/components/tag-badge';
+import DataTable from '@/components/core/data-table';
+import type { DataTableColumn } from '@/components/core/data-table';
+import { ConfirmDialog, Modal } from '@/components/core/modal';
+import PasswordInput from '@/components/core/password-input';
+import TagBadge from '@/components/core/tag-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
