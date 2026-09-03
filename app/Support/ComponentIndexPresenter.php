@@ -24,15 +24,32 @@ class ComponentIndexPresenter
     }
 
     /**
+     * Control types a property can use, matching the table in `.ai/shapes/cmp_format.md`.
+     * The upload page validates an uploaded definition against this list.
+     *
+     * @return array<string, string>
+     */
+    public function propertyTypeLabels(): array
+    {
+        return [
+            'string' => 'Text input',
+            'text' => 'Textarea',
+            'select' => 'Dropdown',
+            'checkbox' => 'Checkbox',
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function present(Component $component): array
     {
         $definition = $component->definition();
-        $info = is_array($definition['info'] ?? null) ? $definition['info'] : [];
+        $information = is_array($definition['information'] ?? null) ? $definition['information'] : [];
         $properties = is_array($definition['properties'] ?? null) ? $definition['properties'] : [];
 
-        $description = $info['description'] ?? null;
+        $description = $information['description'] ?? null;
+        $creator = $definition['creator'] ?? null;
 
         return [
             'key' => "component-{$component->id}",
@@ -41,13 +58,16 @@ class ComponentIndexPresenter
             'slug' => $component->slug,
             // The palette group lives in the definition, not on the row, so an
             // unpublished draft still reports whatever it is currently drafted as.
-            'category' => (string) ($info['category'] ?? 'uncategorized'),
+            'category' => (string) ($information['category'] ?? 'uncategorized'),
             'description' => is_string($description) && $description !== '' ? $description : null,
+            'creator' => is_string($creator) && $creator !== '' ? $creator : null,
             'type' => $component->type,
             'status' => $component->status,
             'has_pending_changes' => $component->hasPendingChanges(),
             'can_delete' => $component->can_delete,
             'property_count' => count($properties),
+            // Carried so a preview can render the component with its own defaults.
+            'properties' => $properties,
         ];
     }
 }

@@ -1,0 +1,97 @@
+# Example custom component definition, in the format described by cmp_format.md.
+#
+# YAML is used instead of JSON so the TSX source stays readable: the `|` block
+# scalar below keeps every newline, quote and indent exactly as written, with no
+# escaping. Everything indented under `tsx:` is the file Ciian generates at
+# resources/js/components/custom/{slug}.tsx.
+#
+# Quote a default that looks like a keyword ("false", "true", "null", "on") or
+# YAML parses it as a boolean. Defaults are stored as strings.
+
+creator: Shashimii
+
+information:
+    name: Submit Button
+    slug: submit_button
+    category: forms
+    can_delete: true
+
+properties:
+    label:
+        type: string
+        label: Label
+        default: Submit
+
+    hint:
+        type: text
+        label: Hint
+        default: ''
+
+    variant:
+        type: select
+        label: Variant
+        default: default
+        options:
+            - default
+            - destructive
+            - outline
+            - secondary
+
+    size:
+        type: select
+        label: Size
+        default: default
+        options:
+            - default
+            - sm
+            - lg
+
+    loading:
+        type: checkbox
+        label: Show loading state
+        default: 'false'
+
+    full_width:
+        type: checkbox
+        label: Full width
+        default: 'false'
+
+tsx: |
+    import { Loader2 } from 'lucide-react';
+    import { Button } from '@/components/ui/button';
+
+    export type SubmitButtonProps = {
+        label: string;
+        hint?: string;
+        variant?: 'default' | 'destructive' | 'outline' | 'secondary';
+        size?: 'default' | 'sm' | 'lg';
+        loading?: boolean;
+        full_width?: boolean;
+    };
+
+    export default function SubmitButton({
+        label,
+        hint = '',
+        variant = 'default',
+        size = 'default',
+        loading = false,
+        full_width = false,
+    }: SubmitButtonProps) {
+        return (
+            <div className="flex flex-col gap-1">
+                <Button
+                    type="submit"
+                    variant={variant}
+                    size={size}
+                    disabled={loading}
+                    className={full_width ? 'w-full' : undefined}
+                >
+                    {loading && <Loader2 className="size-4 animate-spin" />}
+                    {label}
+                </Button>
+                {hint && (
+                    <span className="text-xs text-muted-foreground">{hint}</span>
+                )}
+            </div>
+        );
+    }
