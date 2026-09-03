@@ -13,6 +13,8 @@ use App\Models\Ciian\System\SystemTable;
 use App\Support\TableIndexPresenter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -127,6 +129,10 @@ class TableController extends Controller
     ): RedirectResponse {
         $wasSync = $internalTable->isPublished() && $internalTable->hasPendingChanges();
 
+        if ($wasSync) {
+            $this->verifyRootPassword($request);
+        }
+
         $publishTable->handle($internalTable, $request->boolean('confirm_drops'));
 
         Inertia::flash('toast', [
@@ -149,6 +155,10 @@ class TableController extends Controller
     ): RedirectResponse {
         $wasSync = $systemTable->isPublished() && $systemTable->hasPendingChanges();
 
+        if ($wasSync) {
+            $this->verifyRootPassword($request);
+        }
+
         $publishTable->handle($systemTable, $request->boolean('confirm_drops'));
 
         Inertia::flash('toast', [
@@ -162,11 +172,35 @@ class TableController extends Controller
     }
 
     /**
+     * Require the current user's own password before syncing or deleting a table
+     * that is currently published — on either the internal or a created-system
+     * store. An unpublished draft never needs this: nothing physical is at risk.
+     */
+    private function verifyRootPassword(Request $request): void
+    {
+        $password = (string) $request->input('root_password', '');
+
+        if ($password === '' || ! Hash::check($password, (string) $request->user()?->password)) {
+            throw ValidationException::withMessages([
+                'root_password' => __('Incorrect password.'),
+            ]);
+        }
+    }
+
+    /**
      * Delete an internal (seeded Ciian) table draft and, if published, its physical table.
      */
-    public function destroyInternal(InternalTable $internalTable, DeleteTable $deleteTable): RedirectResponse
+    public function destroyInternal(Request $request, InternalTable $internalTable, DeleteTable $deleteTable): RedirectResponse
     {
-        $deleteTable->handle($internalTable);
+        // A protected table is refused outright in DeleteTable regardless of this
+        // flag, so there is nothing to gain by asking for a password first.
+        $requiresPassword = $internalTable->can_delete && $internalTable->isPublished();
+
+        if ($requiresPassword) {
+            $this->verifyRootPassword($request);
+        }
+
+        $deleteTable->handle($internalTable, $requiresPassword);
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -179,9 +213,17 @@ class TableController extends Controller
     /**
      * Delete a system-owned table draft and, if published, its physical table.
      */
-    public function destroySystem(SystemTable $systemTable, DeleteTable $deleteTable): RedirectResponse
+    public function destroySystem(Request $request, SystemTable $systemTable, DeleteTable $deleteTable): RedirectResponse
     {
-        $deleteTable->handle($systemTable);
+        // A protected table is refused outright in DeleteTable regardless of this
+        // flag, so there is nothing to gain by asking for a password first.
+        $requiresPassword = $systemTable->can_delete && $systemTable->isPublished();
+
+        if ($requiresPassword) {
+            $this->verifyRootPassword($request);
+        }
+
+        $deleteTable->handle($systemTable, $requiresPassword);
 
         Inertia::flash('toast', [
             'type' => 'success',

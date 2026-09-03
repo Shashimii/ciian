@@ -11,10 +11,12 @@ import { toast } from 'sonner';
 import DataTable from '@/components/data-table';
 import type { DataTableColumn } from '@/components/data-table';
 import { ConfirmDialog, Modal } from '@/components/modal';
+import PasswordInput from '@/components/password-input';
 import TagBadge from '@/components/tag-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
+import { Label } from '@/components/ui/label';
 import { resolveLucideIcon } from '@/lib/lucide-icons';
 import { create, index as tablesIndex } from '@/routes/tables';
 import {
@@ -50,6 +52,13 @@ export default function TableIndex({ tables }: Props) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [pendingDelete, setPendingDelete] = useState<TableRow | null>(null);
     const [deletingKey, setDeletingKey] = useState<string | null>(null);
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [pendingPassword, setPendingPassword] = useState<
+        | { action: 'publish'; table: TableRow; confirmDrops: boolean }
+        | { action: 'delete'; table: TableRow }
+        | null
+    >(null);
+    const [rootPassword, setRootPassword] = useState('');
 
     // Keep the payload while the dialog fades out so its content stays stable.
     useEffect(() => {
@@ -83,6 +92,20 @@ export default function TableIndex({ tables }: Props) {
 
         return () => clearTimeout(timer);
     }, [deleteDialogOpen]);
+
+    // Keep the payload while the dialog fades out so its content stays stable.
+    useEffect(() => {
+        if (passwordDialogOpen) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setPendingPassword(null);
+            setRootPassword('');
+        }, 200);
+
+        return () => clearTimeout(timer);
+    }, [passwordDialogOpen]);
 
     useEffect(() => {
         setLayoutProps({
@@ -196,7 +219,11 @@ export default function TableIndex({ tables }: Props) {
         });
     };
 
-    const submitPublish = (table: TableRow, confirmDrops = false) => {
+    const submitPublish = (
+        table: TableRow,
+        confirmDrops = false,
+        password?: string,
+    ) => {
         const label = table.is_sync ? 'Syncing' : 'Publishing';
         let toastId: string | number | undefined;
 
@@ -204,7 +231,10 @@ export default function TableIndex({ tables }: Props) {
             table.store === 'internal'
                 ? publishInternal.url(table.id)
                 : publishSystem.url(table.id),
-            confirmDrops ? { confirm_drops: true } : {},
+            {
+                ...(confirmDrops ? { confirm_drops: true } : {}),
+                ...(password ? { root_password: password } : {}),
+            },
             {
                 preserveScroll: true,
                 onStart: () => {
@@ -214,7 +244,8 @@ export default function TableIndex({ tables }: Props) {
                 onError: (errors) => {
                     showError(
                         `${table.name} could not be ${table.is_sync ? 'synced' : 'published'}`,
-                        errors.shape ??
+                        errors.root_password ??
+                            errors.shape ??
                             'The database rejected the change. No reason was returned.',
                     );
                 },
@@ -226,6 +257,19 @@ export default function TableIndex({ tables }: Props) {
         );
     };
 
+    // Any already-published table requires the current user's password before a
+    // sync applies real DDL to it — a first-time publish is unaffected.
+    const proceedToPublish = (table: TableRow, confirmDrops: boolean) => {
+        if (table.is_sync) {
+            setPendingPassword({ action: 'publish', table, confirmDrops });
+            setPasswordDialogOpen(true);
+
+            return;
+        }
+
+        submitPublish(table, confirmDrops);
+    };
+
     const publishTable = (table: TableRow) => {
         if (table.dropped_columns.length > 0) {
             setPendingDrop(table);
@@ -234,29 +278,36 @@ export default function TableIndex({ tables }: Props) {
             return;
         }
 
-        submitPublish(table);
+        proceedToPublish(table, false);
     };
 
     const confirmDrop = () => {
-        if (pendingDrop) {
-            submitPublish(pendingDrop, true);
-        }
-
         setDropDialogOpen(false);
+
+        if (pendingDrop) {
+            proceedToPublish(pendingDrop, true);
+        }
     };
 
-    const deleteTable = (table: TableRow) => {
-        setPendingDelete(table);
-        setDeleteDialogOpen(true);
-    };
-
-    const confirmDelete = () => {
-        const table = pendingDelete;
-
-        if (!table) {
+    const confirmPassword = () => {
+        if (!pendingPassword || !rootPassword) {
             return;
         }
 
+        setPasswordDialogOpen(false);
+
+        if (pendingPassword.action === 'publish') {
+            submitPublish(
+                pendingPassword.table,
+                pendingPassword.confirmDrops,
+                rootPassword,
+            );
+        } else {
+            submitDelete(pendingPassword.table, rootPassword);
+        }
+    };
+
+    const submitDelete = (table: TableRow, password?: string) => {
         let toastId: string | number | undefined;
 
         router.delete(
@@ -265,6 +316,7 @@ export default function TableIndex({ tables }: Props) {
                 : destroySystem.url(table.id),
             {
                 preserveScroll: true,
+                data: password ? { root_password: password } : {},
                 onStart: () => {
                     setDeletingKey(table.key);
                     toastId = toast.loading(`Deleting ${table.name}…`);
@@ -272,7 +324,8 @@ export default function TableIndex({ tables }: Props) {
                 onError: (errors) => {
                     showError(
                         `${table.name} could not be deleted`,
-                        errors.table ??
+                        errors.root_password ??
+                            errors.table ??
                             'The database rejected the change. No reason was returned.',
                     );
                 },
@@ -282,8 +335,28 @@ export default function TableIndex({ tables }: Props) {
                 },
             },
         );
+    };
 
+    const deleteTable = (table: TableRow) => {
+        setPendingDelete(table);
+        setDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = () => {
         setDeleteDialogOpen(false);
+
+        if (!pendingDelete) {
+            return;
+        }
+
+        if (pendingDelete.status === 'published') {
+            setPendingPassword({ action: 'delete', table: pendingDelete });
+            setPasswordDialogOpen(true);
+
+            return;
+        }
+
+        submitDelete(pendingDelete);
     };
 
     return (
@@ -303,7 +376,7 @@ export default function TableIndex({ tables }: Props) {
                     isSync={(row) => row.is_sync}
                     publishingKey={publishingKey}
                     onDelete={deleteTable}
-                    canDelete={(row) => row.can_delete}
+                    isProtected={(row) => !row.can_delete}
                     deletingKey={deletingKey}
                 />
             </div>
@@ -341,13 +414,53 @@ export default function TableIndex({ tables }: Props) {
                 variant="destructive"
                 title="Delete this table?"
                 description={
+                    // The delete action is disabled outright for protected (can_delete:
+                    // false) rows, so this dialog only ever opens for a deletable one.
                     pendingDelete
-                        ? `${pendingDelete.name} and all its data will be permanently deleted. This cannot be undone.`
+                        ? `${pendingDelete.name} and all its data will be permanently deleted. This cannot be undone.${
+                              pendingDelete.status === 'published'
+                                  ? ' This table is published — deleting it will ask for your password next.'
+                                  : ''
+                          }`
                         : undefined
                 }
                 confirmLabel="Delete"
                 onConfirm={confirmDelete}
             />
+
+            <ConfirmDialog
+                open={passwordDialogOpen}
+                onOpenChange={setPasswordDialogOpen}
+                variant="destructive"
+                title="Confirm your password"
+                description={
+                    pendingPassword
+                        ? `${pendingPassword.table.name} is ${pendingPassword.table.can_delete ? 'a published table' : 'a protected platform table'}. Enter your password to ${pendingPassword.action === 'delete' ? 'delete it' : 'sync it'}.`
+                        : undefined
+                }
+                confirmLabel={
+                    pendingPassword?.action === 'delete' ? 'Delete' : 'Sync'
+                }
+                onConfirm={confirmPassword}
+            >
+                <div className="space-y-2">
+                    <Label htmlFor="root-password">Password</Label>
+                    <PasswordInput
+                        id="root-password"
+                        autoFocus
+                        value={rootPassword}
+                        onChange={(event) =>
+                            setRootPassword(event.target.value)
+                        }
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' && rootPassword) {
+                                event.preventDefault();
+                                confirmPassword();
+                            }
+                        }}
+                    />
+                </div>
+            </ConfirmDialog>
 
             <Modal
                 open={errorOpen}

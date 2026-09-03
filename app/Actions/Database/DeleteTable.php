@@ -13,22 +13,42 @@ use Throwable;
 
 class DeleteTable
 {
-    public function __construct(private EloquentModelPath $paths) {}
+    public function __construct(
+        private EloquentModelPath $paths,
+        private GenerateEloquentModel $generateModel,
+    ) {}
 
     /**
      * Delete a table draft: drop the physical table (if published), remove its
-     * generated model, then delete the row. Refused when the row's `can_delete`
-     * column is false — a flag set once by seeders, never by the app itself, so a
-     * table it protects can only come back through the Tables UI by a developer
-     * clearing the column directly in the database, not through any code path here.
+     * generated model, then delete the row.
+     *
+     * Refused unconditionally when the row's `can_delete` column is false — no
+     * confirmation, password included, overrides that; it can only come back through
+     * a developer clearing the column directly in the database. Unlike delete, a sync
+     * (`PublishTable`) is still allowed on a protected table, so this flag only ever
+     * blocks this one action.
+     *
+     * Otherwise, when the row is currently published — it has a live physical table,
+     * on either the internal or a created-system store — $confirmedPassword must be
+     * true. The caller (`TableController`) is responsible for verifying the current
+     * user's password first; this method trusts that flag rather than re-verifying,
+     * the same way `PublishTable::handle()` trusts `$confirmedDrops`. An unpublished
+     * draft needs no confirmation: nothing physical exists yet to lose.
+     *
      * Also refused for any table another published table's foreign key still
-     * references.
+     * references, regardless of confirmation.
      */
-    public function handle(InternalTable|SystemTable $table): void
+    public function handle(InternalTable|SystemTable $table, bool $confirmedPassword = false): void
     {
         if (! $table->can_delete) {
             throw ValidationException::withMessages([
                 'table' => __('This is a protected platform table and cannot be deleted.'),
+            ]);
+        }
+
+        if ($table->isPublished() && ! $confirmedPassword) {
+            throw ValidationException::withMessages([
+                'root_password' => __('This table is published. Confirm your password to delete it.'),
             ]);
         }
 
@@ -52,6 +72,8 @@ class DeleteTable
             if ($physical !== '' && Schema::hasTable($physical)) {
                 Schema::drop($physical);
             }
+
+            $this->generateModel->handleDeletion($table, $shape);
 
             if (! $target['skip'] && $target['path'] !== null && File::exists($target['path'])) {
                 File::delete($target['path']);
