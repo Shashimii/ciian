@@ -40,6 +40,27 @@ class ComponentIndexPresenter
     }
 
     /**
+     * A single component with its full definition, for the detail page.
+     *
+     * The index deliberately does not carry `tsx` — it would mean shipping every
+     * component's source to list them.
+     *
+     * @return array<string, mixed>
+     */
+    public function presentDetail(Component $component): array
+    {
+        $definition = $component->definition();
+        $information = is_array($definition['information'] ?? null) ? $definition['information'] : [];
+        $tsx = $definition['tsx'] ?? null;
+
+        return [
+            ...$this->present($component),
+            'information' => $information,
+            'tsx' => is_string($tsx) ? $tsx : '',
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function present(Component $component): array

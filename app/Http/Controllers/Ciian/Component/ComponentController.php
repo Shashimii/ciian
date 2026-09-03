@@ -43,6 +43,16 @@ class ComponentController extends Controller
     }
 
     /**
+     * Show a single component: its information, properties, and a live preview.
+     */
+    public function show(Component $component, ComponentIndexPresenter $presenter): Response
+    {
+        return Inertia::render('component/view', [
+            'component' => $presenter->presentDetail($component),
+        ]);
+    }
+
+    /**
      * Generate a custom component from an uploaded YAML definition.
      */
     public function store(UploadComponentRequest $request, UploadComponent $uploadComponent): RedirectResponse
