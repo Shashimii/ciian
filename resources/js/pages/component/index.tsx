@@ -1,9 +1,11 @@
-import { Head } from '@inertiajs/react';
-import { useMemo } from 'react';
+import { Head, Link, resetLayoutProps, setLayoutProps } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 import DataTable from '@/components/core/data-table';
 import type { DataTableColumn } from '@/components/core/data-table';
 import { Badge } from '@/components/ui/badge';
-import { index as componentsIndex } from '@/routes/components';
+import { Button } from '@/components/ui/button';
+import { create, index as componentsIndex } from '@/routes/components';
 import type { ComponentRow } from '@/types/component';
 
 type Props = {
@@ -11,6 +13,23 @@ type Props = {
 };
 
 export default function ComponentIndex({ components }: Props) {
+    useEffect(() => {
+        setLayoutProps({
+            headerActions: (
+                <Button asChild>
+                    <Link href={create()}>
+                        <Plus className="size-4" />
+                        New component
+                    </Link>
+                </Button>
+            ),
+        });
+
+        return () => {
+            resetLayoutProps();
+        };
+    }, []);
+
     const columns = useMemo<DataTableColumn<ComponentRow>[]>(
         () => [
             {

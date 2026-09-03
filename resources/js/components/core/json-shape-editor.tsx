@@ -9,6 +9,11 @@ type Props = {
     readOnly?: boolean;
     className?: string;
     height?: string | number;
+    /**
+     * Monaco language id. Stored shapes are JSON, uploaded definitions are YAML,
+     * and component sources are `typescript`.
+     */
+    language?: 'json' | 'yaml' | 'typescript';
 };
 
 export default function JsonShapeEditor({
@@ -17,6 +22,7 @@ export default function JsonShapeEditor({
     readOnly = false,
     className,
     height = '100%',
+    language = 'json',
 }: Props) {
     const { resolvedAppearance } = useAppearance();
 
@@ -34,7 +40,7 @@ export default function JsonShapeEditor({
         <div className={cn('min-h-0 flex-1 overflow-hidden', className)}>
             <Editor
                 height={height}
-                language="json"
+                language={language}
                 theme={resolvedAppearance === 'dark' ? 'vs-dark' : 'light'}
                 value={value}
                 onChange={handleChange}
