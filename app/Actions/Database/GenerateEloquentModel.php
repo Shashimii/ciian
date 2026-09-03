@@ -35,6 +35,24 @@ class GenerateEloquentModel
     }
 
     /**
+     * Remove inbound hasMany relations this table's foreign keys added to parent
+     * models. Called before the table's own row is deleted, so a deleted child no
+     * longer leaves a dangling relation pointing at a class that stops existing.
+     *
+     * @param  array<string, mixed>  $shape
+     */
+    public function handleDeletion(InternalTable|SystemTable $table, array $shape): void
+    {
+        $target = $this->paths->forShape($table, $shape);
+
+        if ($target['skip'] || $target['class'] === null || $target['short'] === null) {
+            return;
+        }
+
+        $this->removeParentHasManyRelations($shape, $target);
+    }
+
+    /**
      * @param  array{
      *     skip: bool,
      *     protected: bool,
@@ -218,6 +236,75 @@ class GenerateEloquentModel
         $source = $this->mergeFillableAttribute($source, $fillable);
         $source = $this->mergeDocProperties($source, $columns, (bool) ($shape['timestamps'] ?? true));
         $source = $this->mergeBelongsToMethods($source, $columns);
+
+        File::put($path, $source);
+    }
+
+    /**
+     * @param  array<string, mixed>  $shape
+     * @param  array{class: class-string|null, short: string|null, table: string}  $childTarget
+     */
+    private function removeParentHasManyRelations(array $shape, array $childTarget): void
+    {
+        if ($childTarget['class'] === null || $childTarget['short'] === null) {
+            return;
+        }
+
+        foreach ($this->columns($shape) as $column) {
+            if (! ColumnTypes::isForeignKey((string) ($column['type'] ?? ''))) {
+                continue;
+            }
+
+            $references = (string) ($column['references'] ?? '');
+
+            if (! preg_match('/^([a-z][a-z0-9_]*)\.([a-z][a-z0-9_]*)$/', $references, $matches)) {
+                continue;
+            }
+
+            $parentTarget = $this->paths->forPhysicalTable($matches[1]);
+
+            if (
+                $parentTarget === null
+                || $parentTarget['skip']
+                || $parentTarget['protected']
+                || $parentTarget['path'] === null
+                || ! File::exists($parentTarget['path'])
+            ) {
+                continue;
+            }
+
+            $method = $this->paths->hasManyMethodName($childTarget['table']);
+            $this->removeHasManyMethod($parentTarget['path'], $method);
+        }
+    }
+
+    private function removeHasManyMethod(string $path, string $method): void
+    {
+        $source = File::get($path);
+
+        $methodPattern = '/\n    \/\*\*.*?\*\/\n    public function '.preg_quote($method, '/').'\(\): HasMany\n    \{.*?\n    \}/s';
+
+        if (preg_match($methodPattern, $source) !== 1) {
+            return;
+        }
+
+        $source = preg_replace($methodPattern, '', $source, 1) ?? $source;
+
+        $docPattern = '/\n \* @property-read [^\n]*> \$'.preg_quote($method, '/').'\b/';
+        $source = preg_replace($docPattern, '', $source, 1) ?? $source;
+
+        // The class no longer declares any hasMany relation — the import is now unused.
+        if (preg_match('/\): HasMany\b/', $source) !== 1) {
+            $source = preg_replace(
+                '/\nuse Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\HasMany;/',
+                '',
+                $source,
+                1,
+            ) ?? $source;
+        }
+
+        // Collapse the blank-line gap the removed method left behind.
+        $source = preg_replace("/\n{3,}/", "\n\n", $source) ?? $source;
 
         File::put($path, $source);
     }
