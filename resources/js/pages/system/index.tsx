@@ -29,12 +29,7 @@ import {
 import { clearFieldErrors } from '@/lib/clear-field-errors';
 import { resolveLucideIcon, TABLE_ICON_OPTIONS } from '@/lib/lucide-icons';
 import { cn } from '@/lib/utils';
-import {
-    index as systemsIndex,
-    publish,
-    store,
-    update,
-} from '@/routes/systems';
+import { index as systemsIndex, publish, show, store } from '@/routes/systems';
 import { update as updateCiian } from '@/routes/systems/ciian';
 import type { CiianConfigData, SystemRow } from '@/types';
 
@@ -169,27 +164,16 @@ export default function SystemIndex({
     tagColors,
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
-    const [editOpen, setEditOpen] = useState(false);
-    const [editing, setEditing] = useState<SystemRow | null>(null);
     const [ciianOpen, setCiianOpen] = useState(false);
     const [publishingKey, setPublishingKey] = useState<string | null>(null);
     const [errorOpen, setErrorOpen] = useState(false);
     const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
 
     const [showCreateIconPicker, setShowCreateIconPicker] = useState(false);
-    const [showEditIconPicker, setShowEditIconPicker] = useState(false);
     const [showCiianIconPicker, setShowCiianIconPicker] = useState(false);
     const [iconTooltipOpen, setIconTooltipOpen] = useState(false);
 
     const createForm = useForm({
-        name: '',
-        slug: '',
-        icon: 'Box',
-        color: 'violet',
-        description: '',
-    });
-
-    const editForm = useForm({
         name: '',
         slug: '',
         icon: 'Box',
@@ -205,19 +189,7 @@ export default function SystemIndex({
     });
 
     const selectedCreateIcon = resolveLucideIcon(createForm.data.icon);
-    const selectedEditIcon = resolveLucideIcon(editForm.data.icon);
     const selectedCiianIcon = resolveLucideIcon(ciianForm.data.icon);
-
-    // Keep the payload while the sheet fades out so its content stays stable.
-    useEffect(() => {
-        if (editOpen) {
-            return;
-        }
-
-        const timer = setTimeout(() => setEditing(null), 200);
-
-        return () => clearTimeout(timer);
-    }, [editOpen]);
 
     // Keep the payload while the dialog fades out so its content stays stable.
     useEffect(() => {
@@ -366,33 +338,6 @@ export default function SystemIndex({
         }
     };
 
-    const openEdit = (system: SystemRow) => {
-        setEditing(system);
-        editForm.setData({
-            name: system.name,
-            slug: system.slug,
-            icon: system.icon,
-            color: system.color ?? 'violet',
-            description: system.description ?? '',
-        });
-        editForm.clearErrors();
-        setShowEditIconPicker(false);
-        setIconTooltipOpen(false);
-        setEditOpen(true);
-    };
-
-    const closeEdit = (open: boolean) => {
-        setEditOpen(open);
-
-        if (!open) {
-            window.setTimeout(() => {
-                setShowEditIconPicker(false);
-                setIconTooltipOpen(false);
-                editForm.clearErrors();
-            }, 200);
-        }
-    };
-
     const openCiian = () => {
         ciianForm.setData({
             name: ciianConfig.name,
@@ -425,24 +370,6 @@ export default function SystemIndex({
             preserveScroll: true,
             invalidateCacheTags: ['systems', 'tables'],
             onSuccess: () => closeCreate(false),
-        });
-    };
-
-    const submitEdit = (event: FormEvent) => {
-        event.preventDefault();
-
-        if (!editing) {
-            return;
-        }
-
-        editForm.patch(update.url(editing.id), {
-            preserveScroll: true,
-            invalidateCacheTags: ['systems', 'tables'],
-            onSuccess: () => {
-                // Badge icon/color appear on untagged pages (e.g. Tables) too.
-                router.flushAll();
-                closeEdit(false);
-            },
         });
     };
 
@@ -501,13 +428,15 @@ export default function SystemIndex({
                     emptyMessage="No systems yet."
                     searchPlaceholder="Search systems…"
                     onRowClick={(row) => {
+                        // Ciian is the platform, not a created system: it has no
+                        // shape and no manage page, only its config panel.
                         if (row.kind === 'ciian') {
                             openCiian();
 
                             return;
                         }
 
-                        openEdit(row);
+                        router.visit(show(row.id));
                     }}
                     onPublish={publishSystem}
                     canPublish={(row) => row.can_publish}
@@ -660,160 +589,6 @@ export default function SystemIndex({
                     </div>
 
                     <InputError message={createForm.errors.icon} />
-                </form>
-            </FormSidebar>
-
-            <FormSidebar
-                open={editOpen}
-                onOpenChange={closeEdit}
-                title="Edit system"
-                description={
-                    editing?.status === 'published'
-                        ? 'Changes are saved to the draft. Sync the row to take them live.'
-                        : 'Changes are saved to the draft until the system is published.'
-                }
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => closeEdit(false)}
-                            disabled={editForm.processing}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            form="system-edit-form"
-                            disabled={editForm.processing}
-                        >
-                            Save changes
-                        </Button>
-                    </div>
-                }
-            >
-                <form
-                    id="system-edit-form"
-                    noValidate
-                    className="space-y-4"
-                    onSubmit={submitEdit}
-                >
-                    <div className="flex items-end gap-3">
-                        <div className="order-1 min-w-0 flex-1 space-y-2">
-                            <Label htmlFor="system-edit-name">Name</Label>
-                            <Input
-                                id="system-edit-name"
-                                value={editForm.data.name}
-                                onChange={(event) => {
-                                    const name = event.target.value;
-                                    editForm.setData('name', name);
-
-                                    // The slug is still free to follow the name
-                                    // while the system has never been published.
-                                    if (editing?.can_edit_slug) {
-                                        editForm.setData('slug', slugify(name));
-                                    }
-
-                                    clearFieldErrors(editForm, 'name', 'slug');
-                                }}
-                                placeholder="Enter System Name"
-                            />
-                            <InputError message={editForm.errors.name} />
-                        </div>
-
-                        <Tooltip
-                            open={iconTooltipOpen && editOpen}
-                            onOpenChange={setIconTooltipOpen}
-                        >
-                            <TooltipTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="order-2 flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60"
-                                    aria-label="Change icon"
-                                    onPointerEnter={() =>
-                                        setIconTooltipOpen(true)
-                                    }
-                                    onPointerLeave={() =>
-                                        setIconTooltipOpen(false)
-                                    }
-                                    onClick={() =>
-                                        setShowEditIconPicker(
-                                            (current) => !current,
-                                        )
-                                    }
-                                >
-                                    {selectedEditIcon && (
-                                        <Icon
-                                            iconNode={selectedEditIcon}
-                                            className="size-7"
-                                        />
-                                    )}
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Change icon</TooltipContent>
-                        </Tooltip>
-                    </div>
-
-                    <IconPicker
-                        open={showEditIconPicker}
-                        selected={editForm.data.icon}
-                        onSelect={(icon) => {
-                            editForm.setData('icon', icon);
-                            clearFieldErrors(editForm, 'icon');
-                            setShowEditIconPicker(false);
-                        }}
-                    />
-
-                    <div className="space-y-2">
-                        <Label htmlFor="system-edit-slug">Slug</Label>
-                        <Input
-                            id="system-edit-slug"
-                            value={editForm.data.slug}
-                            readOnly
-                            disabled={!editing?.can_edit_slug}
-                            placeholder="Enter System Slug"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            {editing?.can_edit_slug
-                                ? 'Follows the name until the system is published.'
-                                : 'Locked — the published system is served from this path.'}
-                        </p>
-                        <InputError message={editForm.errors.slug} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Tag color</Label>
-                        <ColorPicker
-                            colors={tagColors}
-                            selected={editForm.data.color}
-                            onSelect={(color) => {
-                                editForm.setData('color', color);
-                                clearFieldErrors(editForm, 'color');
-                            }}
-                        />
-                        <InputError message={editForm.errors.color} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="system-edit-description">
-                            Description
-                        </Label>
-                        <Textarea
-                            id="system-edit-description"
-                            value={editForm.data.description}
-                            onChange={(event) => {
-                                editForm.setData(
-                                    'description',
-                                    event.target.value,
-                                );
-                                clearFieldErrors(editForm, 'description');
-                            }}
-                            placeholder="What is this system for?"
-                        />
-                        <InputError message={editForm.errors.description} />
-                    </div>
-
-                    <InputError message={editForm.errors.icon} />
                 </form>
             </FormSidebar>
 

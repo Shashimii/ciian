@@ -34,6 +34,26 @@ export type SystemRow = {
     unpub_shape: SystemShape | null;
 };
 
+export type SystemPageRow = {
+    key: string;
+    id: number;
+    name: string;
+    slug: string;
+    /** True for the starting page every system is created with. */
+    is_index: boolean;
+    /** Path under the system's entry, `/` for the starting page. */
+    path: string;
+    /** Full path the page answers on once the system is live. */
+    url: string;
+    status: 'published' | 'unpublished';
+    has_pending_changes: boolean;
+    can_publish: boolean;
+    is_sync: boolean;
+    /** False for the starting page — a system always keeps its entry point. */
+    can_delete: boolean;
+    can_edit_slug: boolean;
+};
+
 export type CiianConfigData = {
     id: number;
     name: string;
