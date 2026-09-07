@@ -8,25 +8,33 @@ use InvalidArgumentException;
 /**
  * Builds and normalizes page shapes for ciian_sys_pg.
  *
- * A page shape describes the page's identity and the blocks placed on it. The
- * `blocks` key is reserved for the page builder and is carried through
- * untouched so a shape saved today keeps its structure once the builder lands.
+ * A page shape describes the page's identity and the blocks placed on it by the
+ * builder. A block records which component to render and the prop values that
+ * instance was given — never the component's own definition, which lives in
+ * `ciian_cmp` and is the source of truth for how the block behaves.
  */
 class PageShapeBuilder
 {
     /**
      * Build a new page shape from explicit parts.
      *
+     * @param  list<array<string, mixed>>  $blocks
      * @return array<string, mixed>
      */
-    public function make(string $pgName, string $pgSlug, string $pgSys, bool $isIndex = false): array
-    {
+    public function make(
+        string $pgName,
+        string $pgSlug,
+        string $pgSys,
+        bool $isIndex = false,
+        array $blocks = [],
+    ): array {
         return $this->normalize([
             'pg_name' => $pgName,
             'pg_slug' => $pgSlug,
             'pg_sys' => $pgSys,
             'is_index' => $isIndex,
             'path' => $this->pathFor($pgSlug, $isIndex),
+            'blocks' => $blocks,
         ]);
     }
 
@@ -50,8 +58,48 @@ class PageShapeBuilder
             // The path always follows the slug, so a stored value never drifts
             // out of agreement with the page it belongs to.
             'path' => $this->pathFor($slug, $isIndex),
-            'blocks' => is_array($blocks) ? array_values($blocks) : [],
+            'blocks' => $this->normalizeBlocks(is_array($blocks) ? $blocks : []),
         ];
+    }
+
+    /**
+     * Normalize the placed blocks, in the order the builder left them.
+     *
+     * @param  array<mixed>  $blocks
+     * @return list<array<string, mixed>>
+     */
+    public function normalizeBlocks(array $blocks): array
+    {
+        $normalized = [];
+
+        foreach (array_values($blocks) as $index => $block) {
+            if (! is_array($block)) {
+                throw new InvalidArgumentException("Block at index {$index} must be an object.");
+            }
+
+            $props = $block['props'] ?? [];
+            $blockId = $block['block_id'] ?? null;
+
+            $normalized[] = [
+                // Identity that survives reordering and prop edits, so the builder
+                // can track a placed block without leaning on its position.
+                'block_id' => is_string($blockId) && $blockId !== ''
+                    ? $blockId
+                    : $this->newBlockId(),
+                'component' => strtolower(trim((string) ($block['component'] ?? ''))),
+                'props' => is_array($props) ? $props : [],
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * A fresh block identity, for a block placed without one.
+     */
+    public function newBlockId(): string
+    {
+        return 'b_'.bin2hex(random_bytes(6));
     }
 
     /**
@@ -81,6 +129,26 @@ class PageShapeBuilder
             throw new InvalidArgumentException(
                 'The starting page must keep the slug ['.Page::INDEX_SLUG.'].',
             );
+        }
+
+        $seen = [];
+
+        foreach ($shape['blocks'] as $index => $block) {
+            $component = $block['component'];
+
+            if ($component === '' || ! preg_match('/^[a-z][a-z0-9_]*$/', $component)) {
+                throw new InvalidArgumentException(
+                    "Block at index {$index} requires a component slug.",
+                );
+            }
+
+            if (isset($seen[$block['block_id']])) {
+                throw new InvalidArgumentException(
+                    "Duplicate block_id [{$block['block_id']}].",
+                );
+            }
+
+            $seen[$block['block_id']] = true;
         }
     }
 

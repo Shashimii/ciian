@@ -181,3 +181,14 @@ The reason is that publishing a page writes real output named after things that 
 That ordering removes a whole class of problem: **no page folder can exist while a system's slug is still editable**, so renaming a draft system never has generated files to move. `SaveSystemDraft::update()` therefore does no filesystem work at all — it only calls `SavePageDraft::reslugSystem()` to fix the stored shapes. Do not reintroduce a directory-move path here; if you find yourself needing one, the publish ordering has been broken somewhere.
 
 Because the constraint hides the publish control rather than disabling it, the Pages section on the system manage page changes its description while the system is a draft, to say the system must be published first — a silently missing action is worse than a stated reason.
+
+## Page blocks: what the builder stores and how a page renders it
+A page shape's `blocks` key is the builder's output: an ordered list of `{block_id, component, props}`. `component` is a `ciian_cmp` slug and `props` are the values *that instance* was given — a component's own definition (its properties, defaults, TSX) is never copied into the page. `block_id` is stable across reordering and prop edits, so the builder can track a placed block without leaning on its index.
+
+`PageShapeBuilder::normalizeBlocks()` is the only place blocks take canonical form and mints missing ids; `validate()` rejects a blank/malformed component slug or a duplicate `block_id`. Whether a slug actually exists is a DB question, so `SavePageDraft::saveBlocks()` checks it instead and refuses unknown components — a block pointing at nothing renders as a placeholder forever and is invisible in the page's own UI.
+
+**Every rebuild of a page shape must carry the existing blocks through.** `SavePageDraft` rebuilds the whole shape on rename and on `reslugSystem()`, and before this contract existed those paths silently emptied the canvas. `buildShape()` now takes `$blocks` explicitly for that reason — never call it with `[]` from a path that is not creating a page.
+
+Published pages render through `resources/js/components/core/block-renderer.tsx`, not generated imports: `GeneratePageFile` inlines the blocks as a `BLOCKS` const and hands them to `<BlockRenderer />`, which resolves each slug through `block-registry.ts` and lazy-loads it. A slug with no file in the current build renders a "Component not in this build" placeholder — that is a build staleness problem, not missing data. A page with no blocks still falls back to the placeholder landing screen.
+
+Block props are stored as strings, matching how a component definition declares its defaults, and are handed to the component untouched. Do not coerce them in the renderer; the definition already states each prop's type.

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { resolveBlock } from '@/lib/block-registry';
+import type { BlockProps } from '@/lib/block-registry';
 import { index as componentsIndex, show } from '@/routes/components';
 import type { ComponentDetail, ComponentProperty } from '@/types/component';
 
@@ -44,7 +45,9 @@ function defaultsFor(
 }
 
 export default function ComponentView({ component }: Props) {
-    const [preview, setPreview] = useState<ComponentType<never> | null>(null);
+    const [preview, setPreview] = useState<ComponentType<BlockProps> | null>(
+        null,
+    );
     const [previewError, setPreviewError] = useState<string | null>(null);
 
     // Canvas-only state: changing a value here previews the component with it and

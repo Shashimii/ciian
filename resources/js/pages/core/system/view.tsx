@@ -6,8 +6,8 @@ import {
     setLayoutProps,
     useForm,
 } from '@inertiajs/react';
-import { Loader2, Plus, RefreshCw, Upload } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Loader2, Pencil, Plus, RefreshCw, Upload } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { toast } from 'sonner';
 import DataTable from '@/components/core/data-table';
@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { index as systemsIndex, publish, show, update } from '@/routes/systems';
 import {
     destroy as destroyPage,
+    edit as editPage,
     publish as publishPage,
     store as storePage,
     update as updatePage,
@@ -284,6 +285,16 @@ export default function SystemView({ system, pages, tagColors }: Props) {
         return () => clearTimeout(timer);
     }, [pageDeleteOpen]);
 
+    const openPageEdit = useCallback(
+        (page: SystemPageRow) => {
+            setEditingPage(page);
+            pageEditForm.setData({ name: page.name, slug: page.slug });
+            pageEditForm.clearErrors();
+            setPageEditOpen(true);
+        },
+        [pageEditForm],
+    );
+
     const pageColumns = useMemo<DataTableColumn<SystemPageRow>[]>(
         () => [
             {
@@ -298,6 +309,25 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                         {row.is_index && (
                             <Badge variant="outline">Starting page</Badge>
                         )}
+
+                        {/* The row itself opens the builder, so renaming needs a
+                            control of its own. */}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    aria-label="Rename page"
+                                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        openPageEdit(row);
+                                    }}
+                                >
+                                    <Pencil className="size-3.5" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Rename page</TooltipContent>
+                        </Tooltip>
                     </div>
                 ),
             },
@@ -332,7 +362,7 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                 ),
             },
         ],
-        [],
+        [openPageEdit],
     );
 
     const closePageCreate = (open: boolean) => {
@@ -346,13 +376,8 @@ export default function SystemView({ system, pages, tagColors }: Props) {
         }
     };
 
-    const openPageEdit = (page: SystemPageRow) => {
-        setEditingPage(page);
-        pageEditForm.setData({ name: page.name, slug: page.slug });
-        pageEditForm.clearErrors();
-        setPageEditOpen(true);
-    };
-
+    // Referenced from the Pages column definitions, so it has to be stable enough
+    // for their memo to hold across renders.
     const closePageEdit = (open: boolean) => {
         setPageEditOpen(open);
 
@@ -797,7 +822,9 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                             getRowKey={(row) => row.key}
                             emptyMessage="No pages yet."
                             searchPlaceholder="Search pages…"
-                            onRowClick={openPageEdit}
+                            onRowClick={(row) =>
+                                router.visit(editPage([system.id, row.id]))
+                            }
                             onPublish={submitPagePublish}
                             canPublish={(row) => row.can_publish}
                             isSync={(row) => row.is_sync}

@@ -7,11 +7,14 @@ use App\Actions\System\PublishPage;
 use App\Actions\System\SavePageDraft;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ciian\System\StorePageRequest;
+use App\Http\Requests\Ciian\System\UpdatePageBlocksRequest;
 use App\Http\Requests\Ciian\System\UpdatePageRequest;
 use App\Models\Ciian\System\Page;
 use App\Models\Ciian\System\System as CreatedSystem;
+use App\Support\PageBuilderPresenter;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class PageController extends Controller
 {
@@ -47,6 +50,40 @@ class PageController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('Page draft updated.'),
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Open the page builder for one page.
+     */
+    public function edit(
+        CreatedSystem $system,
+        Page $page,
+        PageBuilderPresenter $presenter,
+    ): Response {
+        return Inertia::render('core/system/page/update', [
+            'system' => $presenter->system($system),
+            'page' => $presenter->page($page),
+            'palette' => $presenter->palette(),
+        ]);
+    }
+
+    /**
+     * Replace what the builder has placed on a page.
+     */
+    public function updateBlocks(
+        UpdatePageBlocksRequest $request,
+        CreatedSystem $system,
+        Page $page,
+        SavePageDraft $savePageDraft,
+    ): RedirectResponse {
+        $savePageDraft->saveBlocks($page, $request->blocks());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('Page saved.'),
         ]);
 
         return back();

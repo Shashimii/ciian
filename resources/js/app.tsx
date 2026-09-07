@@ -21,6 +21,9 @@ createInertiaApp({
         switch (true) {
             case name === 'core/welcome':
             case name === 'core/error':
+            // The page builder is a full-screen editor and brings its own
+            // chrome, so it opts out of the admin shell.
+            case name === 'core/system/page/update':
                 return null;
             case name.startsWith('core/auth/'):
                 return AuthLayout;

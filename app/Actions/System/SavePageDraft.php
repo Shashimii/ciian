@@ -2,6 +2,7 @@
 
 namespace App\Actions\System;
 
+use App\Models\Ciian\Component\Component;
 use App\Models\Ciian\System\Page;
 use App\Models\Ciian\System\System;
 use App\Support\PageShapeBuilder;
@@ -57,11 +58,40 @@ class SavePageDraft
             slug: $slug,
             sys: $page->system->slug,
             isIndex: $page->is_index,
+            // Renaming a page must not empty its canvas, so what the builder
+            // placed is carried across every rebuild of the shape.
+            blocks: $this->currentBlocks($page),
         );
 
         return DB::transaction(function () use ($page, $shape): Page {
             $page->name = $shape['pg_name'];
             $page->slug = $shape['pg_slug'];
+            $page->unpub_shape = $shape;
+            $page->save();
+
+            return $page->refresh();
+        });
+    }
+
+    /**
+     * Replace what the builder has placed on a page.
+     *
+     * @param  list<array<string, mixed>>  $blocks
+     */
+    public function saveBlocks(Page $page, array $blocks): Page
+    {
+        $page->loadMissing('system');
+        $this->assertComponentsExist($blocks);
+
+        $shape = $this->buildShape(
+            name: $page->name,
+            slug: $page->slug,
+            sys: $page->system->slug,
+            isIndex: $page->is_index,
+            blocks: $blocks,
+        );
+
+        return DB::transaction(function () use ($page, $shape): Page {
             $page->unpub_shape = $shape;
             $page->save();
 
@@ -81,11 +111,65 @@ class SavePageDraft
                 slug: $page->slug,
                 sys: $system->slug,
                 isIndex: $page->is_index,
+                blocks: $this->currentBlocks($page),
             );
 
             $page->unpub_shape = $shape;
             $page->save();
         }
+    }
+
+    /**
+     * Refuse a canvas referring to a component that is not in `ciian_cmp`.
+     *
+     * A block pointing at nothing renders as a placeholder forever and is
+     * invisible in the page's own UI, so it is better caught on save.
+     *
+     * @param  list<array<string, mixed>>  $blocks
+     */
+    private function assertComponentsExist(array $blocks): void
+    {
+        $slugs = [];
+
+        foreach ($blocks as $block) {
+            $slug = (string) ($block['component'] ?? '');
+
+            if ($slug !== '') {
+                $slugs[$slug] = true;
+            }
+        }
+
+        if ($slugs === []) {
+            return;
+        }
+
+        $known = Component::query()
+            ->whereIn('slug', array_keys($slugs))
+            ->pluck('slug')
+            ->all();
+
+        $missing = array_diff(array_keys($slugs), $known);
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'blocks' => __('Unknown component(s): :slugs.', [
+                    'slugs' => implode(', ', $missing),
+                ]),
+            ]);
+        }
+    }
+
+    /**
+     * The blocks currently on a page's draft.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function currentBlocks(Page $page): array
+    {
+        $shape = is_array($page->unpub_shape) ? $page->unpub_shape : [];
+        $blocks = $shape['blocks'] ?? [];
+
+        return is_array($blocks) ? array_values($blocks) : [];
     }
 
     /**
@@ -99,7 +183,7 @@ class SavePageDraft
 
     private function store(System $system, string $name, string $slug, bool $isIndex): Page
     {
-        $shape = $this->buildShape($name, $slug, $system->slug, $isIndex);
+        $shape = $this->buildShape($name, $slug, $system->slug, $isIndex, []);
 
         return Page::query()->create([
             'system_id' => $system->id,
@@ -113,13 +197,18 @@ class SavePageDraft
     }
 
     /**
+     * @param  list<array<string, mixed>>  $blocks
      * @return array<string, mixed>
      */
-    private function buildShape(string $name, string $slug, string $sys, bool $isIndex): array
-    {
-        $normalized = $this->shapes->make($name, $slug, $sys, $isIndex);
-
+    private function buildShape(
+        string $name,
+        string $slug,
+        string $sys,
+        bool $isIndex,
+        array $blocks,
+    ): array {
         try {
+            $normalized = $this->shapes->make($name, $slug, $sys, $isIndex, $blocks);
             $this->shapes->validate($normalized);
         } catch (InvalidArgumentException $exception) {
             throw ValidationException::withMessages([

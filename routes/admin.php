@@ -37,8 +37,12 @@ Route::prefix('admin')->group(function () {
 
             Route::post('systems/{system}/pages', [PageController::class, 'store'])
                 ->name('systems.pages.store');
+            Route::get('systems/{system}/pages/{page}/edit', [PageController::class, 'edit'])
+                ->name('systems.pages.edit');
             Route::patch('systems/{system}/pages/{page}', [PageController::class, 'update'])
                 ->name('systems.pages.update');
+            Route::put('systems/{system}/pages/{page}/blocks', [PageController::class, 'updateBlocks'])
+                ->name('systems.pages.blocks.update');
             Route::post('systems/{system}/pages/{page}/publish', [PageController::class, 'publish'])
                 ->name('systems.pages.publish');
             Route::delete('systems/{system}/pages/{page}', [PageController::class, 'destroy'])

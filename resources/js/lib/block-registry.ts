@@ -1,6 +1,13 @@
 import type { ComponentType } from 'react';
 
-type BlockModule = { default: ComponentType<never> };
+/**
+ * A block's props are whatever its definition declares, so they are only known
+ * at runtime. The registry types them as a record rather than `never`: a block
+ * placed on a page is rendered with the prop values that instance was given.
+ */
+export type BlockProps = Record<string, unknown>;
+
+type BlockModule = { default: ComponentType<BlockProps> };
 
 /**
  * Every building block that exists as a real file, keyed by its import path.

@@ -105,6 +105,14 @@ class GeneratePageFile
         $name = $this->paths->pageNameFor($system, $page);
         $header = $this->docBlock($system, $page, $name);
 
+        $blocks = $this->placedBlocks($page);
+
+        // A page with nothing on it yet falls back to a placeholder rather than
+        // rendering an empty document.
+        if ($blocks !== []) {
+            return $this->renderBlocks($component, $header, $page, $blocks);
+        }
+
         $body = $page->is_index
             ? $this->renderIndexBody($system, $page)
             : $this->renderPageBody($page);
@@ -120,6 +128,62 @@ class GeneratePageFile
         }
 
         TSX;
+    }
+
+    /**
+     * A page the builder has placed blocks on renders them through the shared
+     * runtime renderer, which resolves each component slug against the build's
+     * block registry. The blocks are inlined as data, so the file stays a plain
+     * static module with no server lookup at request time.
+     *
+     * @param  list<array<string, mixed>>  $blocks
+     */
+    private function renderBlocks(
+        string $component,
+        string $header,
+        Page $page,
+        array $blocks,
+    ): string {
+        $data = (string) json_encode(
+            $blocks,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+        );
+
+        $title = $this->jsString($page->name);
+
+        return <<<TSX
+        import { Head } from '@inertiajs/react';
+        import BlockRenderer from '@/components/core/block-renderer';
+        import type { PlacedBlock } from '@/types';
+
+        {$header}
+        const BLOCKS: PlacedBlock[] = {$data};
+
+        export default function {$component}() {
+            return (
+                <>
+                    <Head title={$title} />
+
+                    <BlockRenderer blocks={BLOCKS} />
+                </>
+            );
+        }
+
+        TSX;
+    }
+
+    /**
+     * What is live on the page: its published shape once it has one, otherwise
+     * the draft the builder is still working on.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function placedBlocks(Page $page): array
+    {
+        $shape = $page->pub_shape ?? $page->unpub_shape;
+        $blocks = is_array($shape) ? ($shape['blocks'] ?? []) : [];
+
+        return is_array($blocks) ? array_values($blocks) : [];
     }
 
     private function docBlock(System $system, Page $page, string $name): string

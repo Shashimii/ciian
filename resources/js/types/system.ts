@@ -72,3 +72,34 @@ export type CiianConfigData = {
     icon: string;
     color: string;
 };
+
+/**
+ * One component placed on a page by the builder: which block to render and the
+ * prop values this instance was given. The component's own definition lives in
+ * `ciian_cmp` and is never copied here.
+ */
+export type PlacedBlock = {
+    /** Stable across reordering and prop edits. */
+    block_id: string;
+    /** Component slug, resolved through `block-registry.ts`. */
+    component: string;
+    props: Record<string, string>;
+};
+
+export type SystemPageDetail = {
+    id: number;
+    name: string;
+    slug: string;
+    is_index: boolean;
+    status: 'published' | 'unpublished';
+    path: string;
+    blocks: PlacedBlock[];
+};
+
+export type PageBuilderSystem = {
+    id: number;
+    name: string;
+    slug: string;
+    prefix: string;
+    status: 'published' | 'unpublished';
+};
