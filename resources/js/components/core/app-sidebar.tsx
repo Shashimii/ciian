@@ -20,7 +20,7 @@ import type { NavGroup } from '@/types';
 
 const mainNavGroups: NavGroup[] = [
     {
-        title: 'Panel',
+        title: 'Main',
         items: [
             {
                 title: 'Dashboard',
@@ -36,6 +36,17 @@ const mainNavGroups: NavGroup[] = [
         ],
     },
     {
+        title: 'Frontend',
+        items: [
+            {
+                title: 'Components',
+                href: componentsIndex(),
+                icon: Blocks,
+                cacheTags: 'components',
+            },
+        ],
+    },
+    {
         title: 'Backend',
         items: [
             {
@@ -43,12 +54,6 @@ const mainNavGroups: NavGroup[] = [
                 href: tablesIndex(),
                 icon: Database,
                 cacheTags: 'tables',
-            },
-            {
-                title: 'Components',
-                href: componentsIndex(),
-                icon: Blocks,
-                cacheTags: 'components',
             },
         ],
     },
