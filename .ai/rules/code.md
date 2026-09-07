@@ -116,3 +116,14 @@ EnsureEmailIsVerified     ❌ (prefer VerifiedEmail if creating new ones)
 - Prefer `{Subject}{Action}` or `{Action}{Subject}` over `If` / `Unless` conditionals in the class name.
 - Keep names short enough to scan in `bootstrap/app.php` aliases and route groups.
 - Existing vendor/framework middleware aliases (`auth`, `verified`, etc.) stay as Laravel provides them — this rule applies to **new app middleware** you create.
+
+## System shapes publish metadata only — no cascade, no DDL
+`ciian_sys` carries `status`, `color`, `unpub_shape` and `pub_shape` alongside `name`/`slug`/`icon`, mirroring the two table stores. The row columns are copied off the shape so the index lists without decoding JSON; the shape stays the source of truth.
+
+`App\Support\SystemShapeBuilder` builds and validates it: `sys_name`, `sys_slug`, `icon`, `color`, `description`, `entry` (root-relative, defaults to `/s/{slug}`), plus `permissions` / `pages` / `components` reserved empty for the System Builder.
+
+`App\Actions\System\PublishSystem::handle()` copies `unpub_shape` → `pub_shape` and sets `status=published` — nothing else. It does **not** publish the system's tables and never runs DDL: `ciian_sys_tbl` rows keep their own draft/published state and are published from the Tables module. Do not add a cascade; a system going live must stay a metadata-only operation. For the same reason a system publish/sync needs no root-password confirmation, unlike a table sync.
+
+A system's slug is its live entry path, so it locks on publish: `SaveSystemDraft::update()` ignores a submitted slug once published (`UpdateSystemRequest::systemPayload()` strips it) and the UI marks the field read-only. Same rule as `tbl_db_name` on a published table — do not unlock it.
+
+Deleting a system is not implemented; `ciian_sys` deliberately has no `can_delete` column.
