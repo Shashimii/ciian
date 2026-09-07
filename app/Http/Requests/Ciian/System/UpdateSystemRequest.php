@@ -2,12 +2,13 @@
 
 namespace App\Http\Requests\Ciian\System;
 
+use App\Models\Ciian\System\System;
 use App\Support\TagColors;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreSystemRequest extends FormRequest
+class UpdateSystemRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -19,14 +20,18 @@ class StoreSystemRequest extends FormRequest
      */
     public function rules(): array
     {
+        $system = $this->routeSystem();
+
         return [
             'name' => ['required', 'string', 'max:255'],
             'slug' => [
-                'required',
+                // A published system is served from its slug, so it locks on publish
+                // and any submitted value is ignored below.
+                $system->isPublished() ? 'nullable' : 'required',
                 'string',
                 'max:255',
                 'regex:/^[a-z][a-z0-9_]*$/',
-                Rule::unique('ciian_sys', 'slug'),
+                Rule::unique('ciian_sys', 'slug')->ignore($system->id),
                 Rule::unique('ciian_config', 'sys_slug'),
             ],
             'icon' => ['sometimes', 'string', 'max:255'],
@@ -36,29 +41,16 @@ class StoreSystemRequest extends FormRequest
     }
 
     /**
-     * @return array{
-     *     name: string,
-     *     slug: string,
-     *     icon?: string|null,
-     *     color?: string|null,
-     *     description?: string|null
-     * }
+     * Validated input with the slug dropped once the system is published.
+     *
+     * @return array<string, mixed>
      */
     public function systemPayload(): array
     {
-        $validated = $this->validated();
+        $payload = $this->validated();
 
-        $payload = [
-            'name' => (string) $validated['name'],
-            'slug' => (string) $validated['slug'],
-        ];
-
-        foreach (['icon', 'color', 'description'] as $option) {
-            if (array_key_exists($option, $validated)) {
-                $payload[$option] = $validated[$option] === null
-                    ? null
-                    : (string) $validated[$option];
-            }
+        if ($this->routeSystem()->isPublished()) {
+            unset($payload['slug']);
         }
 
         return $payload;
@@ -71,5 +63,12 @@ class StoreSystemRequest extends FormRequest
                 'slug' => strtolower((string) $this->input('slug')),
             ]);
         }
+    }
+
+    private function routeSystem(): System
+    {
+        $system = $this->route('system');
+
+        return $system instanceof System ? $system : new System;
     }
 }
