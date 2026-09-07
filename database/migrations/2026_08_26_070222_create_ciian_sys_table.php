@@ -16,6 +16,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->string('icon')->default('Box');
+            $table->string('color')->default('violet');
+            $table->string('status')->default('unpublished')->index();
+            $table->longText('unpub_shape')->nullable();
+            $table->longText('pub_shape')->nullable();
             $table->timestamps();
         });
     }
