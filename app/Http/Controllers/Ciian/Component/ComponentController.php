@@ -20,7 +20,7 @@ class ComponentController extends Controller
      */
     public function index(ComponentIndexPresenter $presenter): Response
     {
-        return Inertia::render('component/index', [
+        return Inertia::render('core/component/index', [
             'components' => $presenter->components(),
         ]);
     }
@@ -37,7 +37,7 @@ class ComponentController extends Controller
             ->where('slug', (string) $request->query('uploaded', ''))
             ->first();
 
-        return Inertia::render('component/create', [
+        return Inertia::render('core/component/create', [
             'propertyTypes' => $presenter->propertyTypeLabels(),
             'uploaded' => $uploaded === null ? null : $presenter->present($uploaded),
         ]);
@@ -48,7 +48,7 @@ class ComponentController extends Controller
      */
     public function show(Component $component, ComponentIndexPresenter $presenter): Response
     {
-        return Inertia::render('component/view', [
+        return Inertia::render('core/component/view', [
             'component' => $presenter->presentDetail($component),
         ]);
     }

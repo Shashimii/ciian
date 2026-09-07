@@ -25,7 +25,7 @@ class TableController extends Controller
      */
     public function index(TableIndexPresenter $presenter): Response
     {
-        return Inertia::render('table/index', [
+        return Inertia::render('core/table/index', [
             'tables' => $presenter->tables(),
         ]);
     }
@@ -35,7 +35,7 @@ class TableController extends Controller
      */
     public function create(TableIndexPresenter $presenter): Response
     {
-        return Inertia::render('table/create', [
+        return Inertia::render('core/table/create', [
             'systems' => $presenter->systemOptions(),
             'columnTypes' => $presenter->columnTypeLabels(),
             'relationTables' => $presenter->relationTables(),
@@ -62,7 +62,7 @@ class TableController extends Controller
      */
     public function editInternal(InternalTable $internalTable, TableIndexPresenter $presenter): Response
     {
-        return Inertia::render('table/update', [
+        return Inertia::render('core/table/update', [
             'table' => $presenter->present($internalTable),
             'systems' => $presenter->systemOptions(),
             'columnTypes' => $presenter->columnTypeLabels(),
@@ -75,7 +75,7 @@ class TableController extends Controller
      */
     public function editSystem(SystemTable $systemTable, TableIndexPresenter $presenter): Response
     {
-        return Inertia::render('table/update', [
+        return Inertia::render('core/table/update', [
             'table' => $presenter->present($systemTable),
             'systems' => $presenter->systemOptions(),
             'columnTypes' => $presenter->columnTypeLabels(),

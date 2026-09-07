@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->group(function () {
     Route::middleware(['auth', 'verified'])->group(function () {
-        Route::inertia('dashboard', 'dashboard')->name('dashboard');
+        Route::inertia('dashboard', 'core/dashboard')->name('dashboard');
 
         Route::middleware('permission:systems.manage')->group(function () {
             Route::get('systems', [SystemController::class, 'index'])->name('systems.index');

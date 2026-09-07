@@ -16,7 +16,7 @@ class SecurityController extends Controller
      */
     public function edit(): Response
     {
-        return Inertia::render('settings/security', [
+        return Inertia::render('core/settings/security', [
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
         ]);
     }

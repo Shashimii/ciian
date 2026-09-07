@@ -61,7 +61,7 @@ class AppServiceProvider extends ServiceProvider
 
             if (in_array($status, [403, 404], true)) {
                 return $response
-                    ->render('error', ['status' => $status])
+                    ->render('core/error', ['status' => $status])
                     ->withSharedData();
             }
 
@@ -70,7 +70,7 @@ class AppServiceProvider extends ServiceProvider
                 && in_array($status, [500, 503], true)
             ) {
                 return $response
-                    ->render('error', ['status' => $status])
+                    ->render('core/error', ['status' => $status])
                     ->withSharedData();
             }
         });

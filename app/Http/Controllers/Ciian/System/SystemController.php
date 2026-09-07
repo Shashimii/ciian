@@ -25,7 +25,7 @@ class SystemController extends Controller
     {
         $config = CiianConfig::query()->firstOrFail();
 
-        return Inertia::render('system/index', [
+        return Inertia::render('core/system/index', [
             'systems' => $presenter->systems(),
             'ciianConfig' => [
                 'id' => $config->id,
@@ -58,7 +58,7 @@ class SystemController extends Controller
      */
     public function show(CreatedSystem $system, SystemIndexPresenter $presenter): Response
     {
-        return Inertia::render('system/view', [
+        return Inertia::render('core/system/view', [
             'system' => $presenter->present($system->loadCount('tables')),
             'pages' => $presenter->pages($system),
             'tagColors' => TagColors::OPTIONS,
