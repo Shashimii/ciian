@@ -10,10 +10,16 @@ use InvalidArgumentException;
 
 class SaveSystemDraft
 {
-    public function __construct(private SystemShapeBuilder $shapes) {}
+    public function __construct(
+        private SystemShapeBuilder $shapes,
+        private SavePageDraft $pages,
+    ) {}
 
     /**
      * Create a draft system row and store the normalized shape in unpub_shape.
+     *
+     * The system's starting page is created in the same transaction, so a system
+     * never exists without an entry point to serve.
      *
      * @param  array{
      *     name: string,
@@ -36,15 +42,21 @@ class SaveSystemDraft
             'description' => $input['description'] ?? null,
         ]);
 
-        return DB::transaction(fn (): System => System::query()->create([
-            'name' => $input['name'],
-            'slug' => $shape['sys_slug'],
-            'icon' => $shape['icon'],
-            'color' => $shape['color'],
-            'status' => System::STATUS_UNPUBLISHED,
-            'unpub_shape' => $shape,
-            'pub_shape' => null,
-        ]));
+        return DB::transaction(function () use ($input, $shape): System {
+            $system = System::query()->create([
+                'name' => $input['name'],
+                'slug' => $shape['sys_slug'],
+                'icon' => $shape['icon'],
+                'color' => $shape['color'],
+                'status' => System::STATUS_UNPUBLISHED,
+                'unpub_shape' => $shape,
+                'pub_shape' => null,
+            ]);
+
+            $this->pages->createIndex($system);
+
+            return $system;
+        });
     }
 
     /**
@@ -86,12 +98,18 @@ class SaveSystemDraft
         ]);
 
         return DB::transaction(function () use ($system, $shape): System {
+            $slugChanged = $system->slug !== $shape['sys_slug'];
+
             $system->name = $shape['sys_name'];
             $system->slug = $shape['sys_slug'];
             $system->icon = $shape['icon'];
             $system->color = $shape['color'];
             $system->unpub_shape = $shape;
             $system->save();
+
+            if ($slugChanged) {
+                $this->pages->reslugSystem($system);
+            }
 
             return $system->refresh();
         });
