@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string $slug
+ * @property string $prefix
  * @property string $icon
  * @property string $color
  * @property string $status
@@ -35,7 +36,7 @@ use Illuminate\Support\Carbon;
  * @property-read int|null $pages_count
  * @property-read Page|null $indexPage
  */
-#[Fillable(['name', 'slug', 'icon', 'color', 'status', 'unpub_shape', 'pub_shape'])]
+#[Fillable(['name', 'slug', 'prefix', 'icon', 'color', 'status', 'unpub_shape', 'pub_shape'])]
 class System extends Model
 {
     /** @use HasFactory<SystemFactory> */

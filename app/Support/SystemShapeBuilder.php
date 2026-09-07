@@ -29,18 +29,18 @@ class SystemShapeBuilder
     public function make(
         string $sysName,
         string $sysSlug,
+        string $prefix,
         string $icon = 'Box',
         string $color = 'violet',
         ?string $description = null,
-        ?string $entry = null,
     ): array {
         return $this->normalize([
             'sys_name' => $sysName,
             'sys_slug' => $sysSlug,
+            'prefix' => $prefix,
             'icon' => $icon,
             'color' => $color,
             'description' => $description,
-            'entry' => $entry ?? $this->defaultEntry($sysSlug),
         ]);
     }
 
@@ -53,18 +53,21 @@ class SystemShapeBuilder
     public function normalize(array $shape): array
     {
         $slug = strtolower(trim((string) ($shape['sys_slug'] ?? '')));
+        $prefix = strtolower(trim((string) ($shape['prefix'] ?? '')));
         $description = $shape['description'] ?? null;
-        $entry = trim((string) ($shape['entry'] ?? ''));
 
         $normalized = [
             'sys_name' => trim((string) ($shape['sys_name'] ?? '')),
             'sys_slug' => $slug,
+            'prefix' => $prefix,
             'icon' => trim((string) ($shape['icon'] ?? 'Box')) ?: 'Box',
             'color' => strtolower(trim((string) ($shape['color'] ?? 'violet'))) ?: 'violet',
             'description' => is_string($description) && trim($description) !== ''
                 ? trim($description)
                 : null,
-            'entry' => $entry !== '' ? $entry : $this->defaultEntry($slug),
+            // Always derived from the prefix, never read back from storage, so a
+            // stored entry cannot drift from the URL the system actually answers on.
+            'entry' => SystemUrlPrefix::entryFor($prefix),
         ];
 
         foreach (self::RESERVED_KEYS as $key) {
@@ -94,6 +97,16 @@ class SystemShapeBuilder
             throw new InvalidArgumentException('System shape requires a snake_case sys_slug.');
         }
 
+        if ($shape['prefix'] === '' || ! preg_match(SystemUrlPrefix::PATTERN, $shape['prefix'])) {
+            throw new InvalidArgumentException('System shape requires a URL-safe prefix.');
+        }
+
+        if (SystemUrlPrefix::isReserved($shape['prefix'])) {
+            throw new InvalidArgumentException(
+                "The prefix [{$shape['prefix']}] is reserved by Ciian.",
+            );
+        }
+
         if ($shape['icon'] === '') {
             throw new InvalidArgumentException('System shape requires an icon.');
         }
@@ -101,17 +114,5 @@ class SystemShapeBuilder
         if (! TagColors::isValid($shape['color'])) {
             throw new InvalidArgumentException("System shape has unknown color [{$shape['color']}].");
         }
-
-        if (! str_starts_with($shape['entry'], '/')) {
-            throw new InvalidArgumentException('System shape entry must be a root-relative path.');
-        }
-    }
-
-    /**
-     * Where a published system is served from.
-     */
-    public function defaultEntry(string $sysSlug): string
-    {
-        return '/s/'.$sysSlug;
     }
 }

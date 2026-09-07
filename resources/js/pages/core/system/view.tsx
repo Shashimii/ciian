@@ -57,6 +57,15 @@ function slugify(value: string): string {
         .replace(/^_+|_+$/g, '');
 }
 
+/** URL segments read better with dashes than the slug's underscores. */
+function prefixify(value: string): string {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
 const COLOR_SWATCHES: Record<string, string> = {
     violet: 'bg-violet-500',
     purple: 'bg-purple-500',
@@ -124,6 +133,7 @@ export default function SystemView({ system, pages, tagColors }: Props) {
     const form = useForm({
         name: system.name,
         slug: system.slug,
+        prefix: system.prefix,
         icon: system.icon,
         color: system.color ?? 'violet',
         description: system.description ?? '',
@@ -464,12 +474,16 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                             const name = event.target.value;
                                             form.setData('name', name);
 
-                                            // The slug is still free to follow the
-                                            // name until the system is published.
+                                            // Slug and prefix are still free to
+                                            // follow the name until publish.
                                             if (system.can_edit_slug) {
                                                 form.setData(
                                                     'slug',
                                                     slugify(name),
+                                                );
+                                                form.setData(
+                                                    'prefix',
+                                                    prefixify(name),
                                                 );
                                             }
 
@@ -477,6 +491,7 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                                 form,
                                                 'name',
                                                 'slug',
+                                                'prefix',
                                             );
                                         }}
                                         placeholder="Enter System Name"
@@ -579,10 +594,44 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     {system.can_edit_slug
-                                        ? 'Follows the name until the system is published.'
-                                        : 'Locked — the published system is served from this path.'}
+                                        ? 'Identifies the system internally and names its page folder. Follows the name until published.'
+                                        : 'Locked — the generated page folder is named after it.'}
                                 </p>
                                 <InputError message={form.errors.slug} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="system-prefix">
+                                    URL prefix
+                                </Label>
+                                <Input
+                                    id="system-prefix"
+                                    value={form.data.prefix}
+                                    readOnly={!system.can_edit_slug}
+                                    disabled={!system.can_edit_slug}
+                                    onChange={(event) => {
+                                        form.setData(
+                                            'prefix',
+                                            event.target.value,
+                                        );
+                                        clearFieldErrors(form, 'prefix');
+                                    }}
+                                    placeholder="Enter URL Prefix"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    {system.can_edit_slug ? (
+                                        <>
+                                            The system is served from{' '}
+                                            <span className="font-mono">
+                                                /{form.data.prefix || '…'}
+                                            </span>
+                                            . It locks once published.
+                                        </>
+                                    ) : (
+                                        'Locked — the published system is served from this URL.'
+                                    )}
+                                </p>
+                                <InputError message={form.errors.prefix} />
                             </div>
 
                             <div className="space-y-2">

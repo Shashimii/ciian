@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
+            // Top-level URL segment the published system is served from.
+            $table->string('prefix')->unique();
             $table->string('icon')->default('Box');
             $table->string('color')->default('violet');
             $table->string('status')->default('unpublished')->index();

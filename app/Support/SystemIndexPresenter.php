@@ -58,6 +58,7 @@ class SystemIndexPresenter
             'id' => $system->id,
             'name' => $system->name,
             'slug' => $system->slug,
+            'prefix' => $system->prefix,
             'icon' => $system->icon,
             'color' => $system->color,
             'description' => $shape['description'] ?? null,
@@ -67,6 +68,8 @@ class SystemIndexPresenter
             'can_publish' => ! $system->isPublished() || $system->hasPendingChanges(),
             'is_sync' => $system->isPublished() && $system->hasPendingChanges(),
             // The slug is the live entry path, so it locks on publish.
+            // The slug names the generated page folder and the prefix is the live
+            // URL, so both lock together when the system is published.
             'can_edit_slug' => ! $system->isPublished(),
             'tables_count' => $system->tables_count ?? $system->tables()->count(),
             'unpub_shape' => $system->unpub_shape,
@@ -117,6 +120,8 @@ class SystemIndexPresenter
             'id' => $config->id,
             'name' => $config->name,
             'slug' => $config->sys_slug,
+            // The platform is the site root, not a prefixed system.
+            'prefix' => '',
             'icon' => $config->icon,
             'color' => $config->color,
             'description' => null,

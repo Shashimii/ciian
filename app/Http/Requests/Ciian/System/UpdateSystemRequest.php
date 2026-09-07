@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Ciian\System;
 
 use App\Models\Ciian\System\System;
+use App\Support\SystemPagePath;
+use App\Support\SystemUrlPrefix;
 use App\Support\TagColors;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,17 +24,28 @@ class UpdateSystemRequest extends FormRequest
     {
         $system = $this->routeSystem();
 
+        // The slug names the generated page folder and the prefix is the live URL,
+        // so both lock on publish and any submitted value is ignored below.
+        $locked = $system->isPublished() ? 'nullable' : 'required';
+
         return [
             'name' => ['required', 'string', 'max:255'],
             'slug' => [
-                // A published system is served from its slug, so it locks on publish
-                // and any submitted value is ignored below.
-                $system->isPublished() ? 'nullable' : 'required',
+                $locked,
                 'string',
                 'max:255',
                 'regex:/^[a-z][a-z0-9_]*$/',
+                Rule::notIn(SystemPagePath::RESERVED_FOLDERS),
                 Rule::unique('ciian_sys', 'slug')->ignore($system->id),
                 Rule::unique('ciian_config', 'sys_slug'),
+            ],
+            'prefix' => [
+                $locked,
+                'string',
+                'max:255',
+                'regex:'.SystemUrlPrefix::PATTERN,
+                Rule::notIn(SystemUrlPrefix::RESERVED),
+                Rule::unique('ciian_sys', 'prefix')->ignore($system->id),
             ],
             'icon' => ['sometimes', 'string', 'max:255'],
             'color' => ['sometimes', 'string', Rule::in(TagColors::OPTIONS)],
@@ -41,7 +54,18 @@ class UpdateSystemRequest extends FormRequest
     }
 
     /**
-     * Validated input with the slug dropped once the system is published.
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'prefix.not_in' => __('That URL prefix is reserved by Ciian. Pick another.'),
+            'prefix.regex' => __('The URL prefix may only use lowercase letters, numbers, dashes and underscores.'),
+        ];
+    }
+
+    /**
+     * Validated input with the slug and prefix dropped once the system is published.
      *
      * @return array<string, mixed>
      */
@@ -50,7 +74,7 @@ class UpdateSystemRequest extends FormRequest
         $payload = $this->validated();
 
         if ($this->routeSystem()->isPublished()) {
-            unset($payload['slug']);
+            unset($payload['slug'], $payload['prefix']);
         }
 
         return $payload;
@@ -58,10 +82,12 @@ class UpdateSystemRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->filled('slug')) {
-            $this->merge([
-                'slug' => strtolower((string) $this->input('slug')),
-            ]);
+        foreach (['slug', 'prefix'] as $field) {
+            if ($this->filled($field)) {
+                $this->merge([
+                    $field => strtolower((string) $this->input($field)),
+                ]);
+            }
         }
     }
 

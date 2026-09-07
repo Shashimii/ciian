@@ -55,6 +55,15 @@ function slugify(value: string): string {
         .replace(/^_+|_+$/g, '');
 }
 
+/** URL segments read better with dashes than the slug's underscores. */
+function prefixify(value: string): string {
+    return value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
 const COLOR_SWATCHES: Record<string, string> = {
     violet: 'bg-violet-500',
     purple: 'bg-purple-500',
@@ -176,6 +185,7 @@ export default function SystemIndex({
     const createForm = useForm({
         name: '',
         slug: '',
+        prefix: '',
         icon: 'Box',
         color: 'violet',
         description: '',
@@ -486,10 +496,15 @@ export default function SystemIndex({
                                     const name = event.target.value;
                                     createForm.setData('name', name);
                                     createForm.setData('slug', slugify(name));
+                                    createForm.setData(
+                                        'prefix',
+                                        prefixify(name),
+                                    );
                                     clearFieldErrors(
                                         createForm,
                                         'name',
                                         'slug',
+                                        'prefix',
                                     );
                                 }}
                                 placeholder="Enter System Name"
@@ -549,13 +564,34 @@ export default function SystemIndex({
                             placeholder="Enter System Slug"
                         />
                         <p className="text-xs text-muted-foreground">
+                            Identifies the system internally and names its page
+                            folder. Locks once published.
+                        </p>
+                        <InputError message={createForm.errors.slug} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="system-prefix">URL prefix</Label>
+                        <Input
+                            id="system-prefix"
+                            value={createForm.data.prefix}
+                            onChange={(event) => {
+                                createForm.setData(
+                                    'prefix',
+                                    event.target.value,
+                                );
+                                clearFieldErrors(createForm, 'prefix');
+                            }}
+                            placeholder="Enter URL Prefix"
+                        />
+                        <p className="text-xs text-muted-foreground">
                             The system is served from{' '}
                             <span className="font-mono">
-                                /s/{createForm.data.slug || '…'}
+                                /{createForm.data.prefix || '…'}
                             </span>{' '}
                             once published. It locks at that point.
                         </p>
-                        <InputError message={createForm.errors.slug} />
+                        <InputError message={createForm.errors.prefix} />
                     </div>
 
                     <div className="space-y-2">

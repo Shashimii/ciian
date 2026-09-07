@@ -25,16 +25,19 @@ class SystemFactory extends Factory
     {
         $name = Str::title(implode(' ', Arr::wrap(fake()->unique()->words(2))));
         $slug = Str::snake(Str::slug($name, '_'));
+        $prefix = Str::slug($name);
 
         return [
             'name' => $name,
             'slug' => $slug,
+            'prefix' => $prefix,
             'icon' => 'Box',
             'color' => 'violet',
             'status' => System::STATUS_UNPUBLISHED,
             'unpub_shape' => (new SystemShapeBuilder)->make(
                 sysName: $name,
                 sysSlug: $slug,
+                prefix: $prefix,
             ),
             'pub_shape' => null,
         ];

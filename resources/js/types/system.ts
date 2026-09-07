@@ -3,6 +3,8 @@ export type SystemKind = 'ciian' | 'system';
 export type SystemShape = {
     sys_name: string;
     sys_slug: string;
+    /** Top-level URL segment the system is served from. */
+    prefix: string;
     icon: string;
     color: string;
     description: string | null;
@@ -20,6 +22,8 @@ export type SystemRow = {
     id: number;
     name: string;
     slug: string;
+    /** Top-level URL segment the system is served from. */
+    prefix: string;
     icon: string;
     color: string | null;
     description: string | null;
@@ -28,7 +32,10 @@ export type SystemRow = {
     has_pending_changes: boolean;
     can_publish: boolean;
     is_sync: boolean;
-    /** False once published — the slug is the system's live entry path. */
+    /**
+     * False once published. The slug names the generated page folder and the
+     * prefix is the live URL, so the two lock together.
+     */
     can_edit_slug: boolean;
     tables_count: number;
     unpub_shape: SystemShape | null;
