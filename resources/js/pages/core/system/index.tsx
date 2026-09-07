@@ -13,7 +13,8 @@ import DataTable from '@/components/core/data-table';
 import type { DataTableColumn } from '@/components/core/data-table';
 import FormSidebar from '@/components/core/form-sidebar';
 import InputError from '@/components/core/input-error';
-import { Modal } from '@/components/core/modal';
+import { ConfirmDialog, Modal } from '@/components/core/modal';
+import PasswordInput from '@/components/core/password-input';
 import TagBadge from '@/components/core/tag-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,13 @@ import {
 import { clearFieldErrors } from '@/lib/clear-field-errors';
 import { resolveLucideIcon, TABLE_ICON_OPTIONS } from '@/lib/lucide-icons';
 import { cn } from '@/lib/utils';
-import { index as systemsIndex, publish, show, store } from '@/routes/systems';
+import {
+    destroy,
+    index as systemsIndex,
+    publish,
+    show,
+    store,
+} from '@/routes/systems';
 import { update as updateCiian } from '@/routes/systems/ciian';
 import type { CiianConfigData, SystemRow } from '@/types';
 
@@ -175,6 +182,11 @@ export default function SystemIndex({
     const [createOpen, setCreateOpen] = useState(false);
     const [ciianOpen, setCiianOpen] = useState(false);
     const [publishingKey, setPublishingKey] = useState<string | null>(null);
+    const [deletingKey, setDeletingKey] = useState<string | null>(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [passwordOpen, setPasswordOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<SystemRow | null>(null);
+    const [rootPassword, setRootPassword] = useState('');
     const [errorOpen, setErrorOpen] = useState(false);
     const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
 
@@ -211,6 +223,21 @@ export default function SystemIndex({
 
         return () => clearTimeout(timer);
     }, [errorOpen]);
+
+    // The delete confirm hands off to the password prompt, so the payload is only
+    // cleared once neither is open.
+    useEffect(() => {
+        if (deleteOpen || passwordOpen) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setPendingDelete(null);
+            setRootPassword('');
+        }, 200);
+
+        return () => clearTimeout(timer);
+    }, [deleteOpen, passwordOpen]);
 
     useEffect(() => {
         setLayoutProps({
@@ -426,6 +453,70 @@ export default function SystemIndex({
         );
     };
 
+    const submitDelete = (system: SystemRow, password?: string) => {
+        let toastId: string | number | undefined;
+
+        router.delete(destroy.url(system.id), {
+            preserveScroll: true,
+            invalidateCacheTags: ['systems', 'tables'],
+            data: password ? { root_password: password } : {},
+            onStart: () => {
+                setDeletingKey(system.key);
+                toastId = toast.loading(`Deleting ${system.name}…`);
+            },
+            onError: (errors) => {
+                showError(
+                    `${system.name} could not be deleted`,
+                    errors.root_password ??
+                        errors.system ??
+                        'The system could not be deleted. No reason was returned.',
+                );
+            },
+            onFinish: () => {
+                setDeletingKey(null);
+                toast.dismiss(toastId);
+            },
+        });
+    };
+
+    const confirmDelete = () => {
+        setDeleteOpen(false);
+
+        if (!pendingDelete) {
+            return;
+        }
+
+        // The server refuses this too, in case the count is stale — but there is
+        // no point spending a round-trip when the answer is already on screen.
+        if (pendingDelete.blocking_tables > 0) {
+            toast.error(
+                `${pendingDelete.name} still owns tables. Delete them from the Tables module first.`,
+                { duration: 12000 },
+            );
+
+            return;
+        }
+
+        // A live system is serving its pages at its prefix, so removing it asks
+        // for the current user's password first. A draft serves nothing yet.
+        if (pendingDelete.status === 'published') {
+            setPasswordOpen(true);
+
+            return;
+        }
+
+        submitDelete(pendingDelete);
+    };
+
+    const confirmPassword = () => {
+        if (!pendingDelete || !rootPassword) {
+            return;
+        }
+
+        setPasswordOpen(false);
+        submitDelete(pendingDelete, rootPassword);
+    };
+
     return (
         <>
             <Head title="Systems" />
@@ -452,8 +543,69 @@ export default function SystemIndex({
                     canPublish={(row) => row.can_publish}
                     isSync={(row) => row.is_sync}
                     publishingKey={publishingKey}
+                    onDelete={(row) => {
+                        setPendingDelete(row);
+                        setDeleteOpen(true);
+                    }}
+                    isProtected={(row) => !row.can_delete}
+                    protectedLabel="Protected System"
+                    deletingKey={deletingKey}
                 />
             </div>
+
+            <ConfirmDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                variant="destructive"
+                title="Delete this system?"
+                description={
+                    // The Ciian row's delete action is disabled outright, so this
+                    // dialog only ever opens for a created system.
+                    pendingDelete
+                        ? pendingDelete.blocking_tables > 0
+                            ? `${pendingDelete.name} still owns ${pendingDelete.blocking_tables} table${pendingDelete.blocking_tables === 1 ? '' : 's'}. Delete them from the Tables module first — deleting a system never drops physical tables.`
+                            : `${pendingDelete.name}, its pages, and everything generated for it will be permanently deleted. This cannot be undone.${
+                                  pendingDelete.status === 'published'
+                                      ? ' This system is published — deleting it will ask for your password next.'
+                                      : ''
+                              }`
+                        : undefined
+                }
+                confirmLabel="Delete"
+                onConfirm={confirmDelete}
+            />
+
+            <ConfirmDialog
+                open={passwordOpen}
+                onOpenChange={setPasswordOpen}
+                variant="destructive"
+                title="Confirm your password"
+                description={
+                    pendingDelete
+                        ? `${pendingDelete.name} is published and serving its pages. Enter your password to delete it.`
+                        : undefined
+                }
+                confirmLabel="Delete"
+                onConfirm={confirmPassword}
+            >
+                <div className="space-y-2">
+                    <Label htmlFor="root-password">Password</Label>
+                    <PasswordInput
+                        id="root-password"
+                        autoFocus
+                        value={rootPassword}
+                        onChange={(event) =>
+                            setRootPassword(event.target.value)
+                        }
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' && rootPassword) {
+                                event.preventDefault();
+                                confirmPassword();
+                            }
+                        }}
+                    />
+                </div>
+            </ConfirmDialog>
 
             <FormSidebar
                 open={createOpen}

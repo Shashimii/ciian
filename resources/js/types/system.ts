@@ -37,6 +37,10 @@ export type SystemRow = {
      * prefix is the live URL, so the two lock together.
      */
     can_edit_slug: boolean;
+    /** False for the Ciian platform row, which is not a created system. */
+    can_delete: boolean;
+    /** Tables the system still owns; deleting is refused while above zero. */
+    blocking_tables: number;
     tables_count: number;
     unpub_shape: SystemShape | null;
 };
