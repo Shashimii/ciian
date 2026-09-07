@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Ciian\System;
 
+use App\Actions\System\PublishSystem;
+use App\Actions\System\SaveSystemDraft;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ciian\System\StoreSystemRequest;
 use App\Http\Requests\Ciian\System\UpdateCiianConfigRequest;
+use App\Http\Requests\Ciian\System\UpdateSystemRequest;
 use App\Models\Ciian\Core\CiianConfig;
-use App\Models\Ciian\Database\InternalTable;
 use App\Models\Ciian\System\System as CreatedSystem;
+use App\Support\SystemIndexPresenter;
 use App\Support\TagColors;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -18,45 +21,12 @@ class SystemController extends Controller
     /**
      * List the platform Ciian config row plus created systems.
      */
-    public function index(): Response
+    public function index(SystemIndexPresenter $presenter): Response
     {
         $config = CiianConfig::query()->firstOrFail();
-        $ciianTablesCount = InternalTable::query()
-            ->tagged(InternalTable::TAG_CIIAN)
-            ->count();
-
-        $created = CreatedSystem::query()
-            ->withCount('tables')
-            ->orderBy('name')
-            ->get()
-            ->map(fn (CreatedSystem $system): array => [
-                'key' => "system:{$system->id}",
-                'kind' => 'system',
-                'id' => $system->id,
-                'name' => $system->name,
-                'slug' => $system->slug,
-                'icon' => $system->icon,
-                'color' => null,
-                'tables_count' => $system->tables_count,
-            ])
-            ->all();
-
-        $systems = [
-            [
-                'key' => 'ciian',
-                'kind' => 'ciian',
-                'id' => $config->id,
-                'name' => $config->name,
-                'slug' => $config->sys_slug,
-                'icon' => $config->icon,
-                'color' => $config->color,
-                'tables_count' => $ciianTablesCount,
-            ],
-            ...$created,
-        ];
 
         return Inertia::render('system/index', [
-            'systems' => $systems,
+            'systems' => $presenter->systems(),
             'ciianConfig' => [
                 'id' => $config->id,
                 'name' => $config->name,
@@ -69,21 +39,55 @@ class SystemController extends Controller
     }
 
     /**
-     * Store a newly created user system (name + slug).
+     * Store a new system draft (unpub_shape only).
      */
-    public function store(StoreSystemRequest $request): RedirectResponse
+    public function store(StoreSystemRequest $request, SaveSystemDraft $saveSystemDraft): RedirectResponse
     {
-        CreatedSystem::query()->create([
-            ...$request->validated(),
-            'icon' => 'Box',
-        ]);
+        $saveSystemDraft->create($request->systemPayload());
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __('System created.'),
+            'message' => __('System draft saved.'),
         ]);
 
         return to_route('systems.index');
+    }
+
+    /**
+     * Update a system draft (metadata + unpub_shape).
+     */
+    public function update(
+        UpdateSystemRequest $request,
+        CreatedSystem $system,
+        SaveSystemDraft $saveSystemDraft,
+    ): RedirectResponse {
+        $saveSystemDraft->update($system, $request->systemPayload());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('System draft updated.'),
+        ]);
+
+        return to_route('systems.index');
+    }
+
+    /**
+     * Publish or sync a system draft, taking it live at its entry path.
+     */
+    public function publish(CreatedSystem $system, PublishSystem $publishSystem): RedirectResponse
+    {
+        $wasSync = $system->isPublished() && $system->hasPendingChanges();
+
+        $publishSystem->handle($system);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $wasSync
+                ? __('System synced.')
+                : __('System published.'),
+        ]);
+
+        return back();
     }
 
     /**

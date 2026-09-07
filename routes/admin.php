@@ -22,8 +22,13 @@ Route::prefix('admin')->group(function () {
         Route::middleware('permission:systems.manage')->group(function () {
             Route::get('systems', [SystemController::class, 'index'])->name('systems.index');
             Route::post('systems', [SystemController::class, 'store'])->name('systems.store');
+            // Registered before `systems/{system}` so that the literal path wins.
             Route::patch('systems/ciian', [SystemController::class, 'updateCiianConfig'])
                 ->name('systems.ciian.update');
+            Route::patch('systems/{system}', [SystemController::class, 'update'])
+                ->name('systems.update');
+            Route::post('systems/{system}/publish', [SystemController::class, 'publish'])
+                ->name('systems.publish');
         });
 
         Route::middleware('permission:tables.manage')->group(function () {
