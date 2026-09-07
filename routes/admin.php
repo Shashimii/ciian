@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Ciian\Component\ComponentController;
 use App\Http\Controllers\Ciian\Database\TableController;
+use App\Http\Controllers\Ciian\Layout\LayoutController;
 use App\Http\Controllers\Ciian\System\SystemController;
 use Illuminate\Support\Facades\Route;
 
@@ -57,6 +58,10 @@ Route::prefix('admin')->group(function () {
             // Registered after `components/create` so that literal path wins.
             Route::get('components/{component}', [ComponentController::class, 'show'])->name('components.show');
             Route::delete('components/{component}', [ComponentController::class, 'destroy'])->name('components.destroy');
+        });
+
+        Route::middleware('permission:layouts.manage')->group(function () {
+            Route::get('layouts', [LayoutController::class, 'index'])->name('layouts.index');
         });
     });
 });
