@@ -15,6 +15,7 @@ Platform models live under `App\Models\Ciian`, grouped by concern:
 - **`Ciian/Database`** — Database Engine internals only (`ciian_int_tbl`). Do not put Core, System, Component, or Accounts models here.
 - **`Ciian/System`** — created-system models (`ciian_sys`, `ciian_sys_tbl`).
 - **`Ciian/Component`** — Component Engine only (`ciian_cmp`, etc.).
+- **`Ciian/Layout`** — Layout Engine only (`ciian_lyt`), the page shells a page is assigned to.
 - **`Ciian/` root** — shared platform Accounts models (User, Role, Permission) until they get their own concern folder.
 
 ```text
@@ -26,6 +27,8 @@ app/Models/Ciian/System/System.php
 app/Models/Ciian/System/SystemTable.php
 
 app/Models/Ciian/Component/Component.php
+
+app/Models/Ciian/Layout/Layout.php
 
 app/Models/Ciian/User.php
 app/Models/Ciian/Role.php
@@ -39,6 +42,7 @@ database/factories/Ciian/Core/...
 database/factories/Ciian/Database/...
 database/factories/Ciian/System/...
 database/factories/Ciian/Component/...
+database/factories/Ciian/Layout/...
 database/factories/Ciian/UserFactory.php
 ```
 
@@ -59,11 +63,15 @@ Platform admin controllers and form requests mirror model concerns under `Ciian/
 
 - **`Ciian/Database`** — Tables / Database Engine.
 - **`Ciian/System`** — Systems / platform config.
+- **`Ciian/Component`** — Components / Component Engine.
+- **`Ciian/Layout`** — Layouts / Layout Engine.
 - **`Settings/`** — user account settings (not under Ciian).
 
 ```text
 app/Http/Controllers/Ciian/Database/TableController.php
 app/Http/Controllers/Ciian/System/SystemController.php
+app/Http/Controllers/Ciian/Component/ComponentController.php
+app/Http/Controllers/Ciian/Layout/LayoutController.php
 app/Http/Controllers/Settings/...
 
 app/Http/Requests/Ciian/Database/...
