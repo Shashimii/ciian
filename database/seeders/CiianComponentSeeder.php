@@ -3,26 +3,25 @@
 namespace Database\Seeders;
 
 use App\Models\Ciian\Component\Component;
+use App\Support\ComponentShapeBuilder;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
+use InvalidArgumentException;
+use RuntimeException;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Seeds Ciian's default UI building blocks into ciian_cmp.
  *
- * There are none yet: the blocks that ship with the platform have not been written.
- * This seeder is the mechanism for them, so add entries to `blocks()` rather than
- * inserting rows anywhere else.
+ * The definitions are authored as YAML in `.ai/shapes/default/`, one file per
+ * block, in exactly the format `.ai/shapes/cmp_format.md` describes for an
+ * upload. They go through the same `ComponentShapeBuilder` an upload does, so a
+ * default block cannot drift from the contract custom blocks are held to.
  *
- * Each definition follows the contract in `.ai/shapes/cmp_format.md`: `creator`, an
- * `information` block for the palette, a `properties` map describing the property
- * panel, and the component's `tsx` source. Property keys must match the props the
- * TSX destructures, and each `default` must match that prop's default in the source.
- *
- * Uploads are authored as YAML; these seeds are the same shape written directly as
- * PHP arrays, since they never pass through the upload endpoint.
- *
- * Seed default blocks with `can_delete: false` — they ship with the platform and
- * pages may already reference them — and put their source at
- * `resources/js/components/default/{slug}.tsx`. Keep the two in step when either moves.
+ * Seeding writes each block's source to `resources/js/components/default/{slug}.tsx`
+ * — tracked, unlike the gitignored `custom/` folder, because these ship with the
+ * platform. Rows are seeded with `can_delete: false`: pages may already place
+ * them, and nothing in the app flips that column afterwards.
  */
 class CiianComponentSeeder extends Seeder
 {
@@ -31,19 +30,73 @@ class CiianComponentSeeder extends Seeder
      */
     public function run(): void
     {
-        foreach ($this->blocks() as $block) {
+        foreach ($this->definitions() as $slug => $definition) {
+            $this->writeSource($slug, $definition['tsx']);
+
             Component::query()->updateOrCreate(
-                ['slug' => $block['slug']],
-                $block,
+                ['slug' => $slug],
+                [
+                    'name' => $definition['information']['name'],
+                    'type' => Component::TYPE_BLOCK,
+                    // Default blocks are usable the moment they are seeded; there
+                    // is no draft of a block that ships with the platform.
+                    'status' => Component::STATUS_PUBLISHED,
+                    'can_delete' => false,
+                    'unpub_shape' => $definition,
+                    'pub_shape' => $definition,
+                ],
             );
         }
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * Every default definition, keyed by slug.
+     *
+     * @return array<string, array<string, mixed>>
      */
-    private function blocks(): array
+    private function definitions(): array
     {
-        return [];
+        $directory = base_path('.ai/shapes/default');
+
+        if (! File::isDirectory($directory)) {
+            return [];
+        }
+
+        $shapes = new ComponentShapeBuilder;
+        $definitions = [];
+
+        foreach (File::files($directory) as $file) {
+            if ($file->getExtension() !== 'yaml') {
+                continue;
+            }
+
+            try {
+                $definition = $shapes->normalize(Yaml::parseFile($file->getPathname()));
+            } catch (InvalidArgumentException $exception) {
+                throw new RuntimeException(
+                    "Default block [{$file->getFilename()}] is invalid: {$exception->getMessage()}",
+                    previous: $exception,
+                );
+            }
+
+            $definitions[(string) $definition['information']['slug']] = $definition;
+        }
+
+        return $definitions;
+    }
+
+    /**
+     * The file the block renders from. Rewritten on every seed so the source on
+     * disk always matches the definition that was just stored.
+     */
+    private function writeSource(string $slug, string $tsx): void
+    {
+        $path = resource_path("js/components/default/{$slug}.tsx");
+
+        File::ensureDirectoryExists(dirname($path));
+
+        if (File::put($path, $tsx) === false) {
+            throw new RuntimeException("Could not write resources/js/components/default/{$slug}.tsx.");
+        }
     }
 }

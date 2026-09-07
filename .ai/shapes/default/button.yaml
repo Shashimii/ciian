@@ -1,0 +1,108 @@
+# Default block shipped with Ciian. Seeded by CiianComponentSeeder, which writes
+# the tsx below to resources/js/components/default/button.tsx.
+
+creator: Ciian
+
+information:
+    name: Button
+    slug: button
+    category: actions
+    can_delete: false
+    description: A call to action, optionally linking somewhere.
+
+properties:
+    label:
+        type: string
+        label: Label
+        default: Button
+
+    variant:
+        type: select
+        label: Variant
+        default: default
+        options:
+            - default
+            - secondary
+            - outline
+            - ghost
+            - destructive
+            - link
+
+    size:
+        type: select
+        label: Size
+        default: default
+        options:
+            - default
+            - sm
+            - lg
+
+    href:
+        type: string
+        label: Link
+        default: ''
+
+tsx: |
+    import { Button as UiButton } from '@/components/ui/button';
+
+    type Props = {
+        label?: string;
+        variant?: string;
+        size?: string;
+        href?: string;
+    };
+
+    type Variant =
+        | 'default'
+        | 'secondary'
+        | 'outline'
+        | 'ghost'
+        | 'destructive'
+        | 'link';
+
+    type Size = 'default' | 'sm' | 'lg';
+
+    /** Narrowed rather than cast, so an unknown value falls back to the default. */
+    function toVariant(value: string): Variant {
+        switch (value) {
+            case 'secondary':
+            case 'outline':
+            case 'ghost':
+            case 'destructive':
+            case 'link':
+                return value;
+            default:
+                return 'default';
+        }
+    }
+
+    function toSize(value: string): Size {
+        switch (value) {
+            case 'sm':
+            case 'lg':
+                return value;
+            default:
+                return 'default';
+        }
+    }
+
+    export default function Button({
+        label = 'Button',
+        variant = 'default',
+        size = 'default',
+        href = '',
+    }: Props) {
+        if (href !== '') {
+            return (
+                <UiButton asChild variant={toVariant(variant)} size={toSize(size)}>
+                    <a href={href}>{label}</a>
+                </UiButton>
+            );
+        }
+
+        return (
+            <UiButton type="button" variant={toVariant(variant)} size={toSize(size)}>
+                {label}
+            </UiButton>
+        );
+    }

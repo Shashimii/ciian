@@ -1,0 +1,64 @@
+# Default block shipped with Ciian. Seeded by CiianComponentSeeder, which writes
+# the tsx below to resources/js/components/default/text.tsx.
+
+creator: Ciian
+
+information:
+    name: Text
+    slug: text
+    category: content
+    can_delete: false
+    description: A paragraph of body copy.
+
+properties:
+    body:
+        type: text
+        label: Body
+        default: Write something here.
+
+    align:
+        type: select
+        label: Alignment
+        default: left
+        options:
+            - left
+            - center
+            - right
+
+    muted:
+        type: checkbox
+        label: Muted
+        default: false
+
+tsx: |
+    import { cn } from '@/lib/utils';
+
+    type Props = {
+        body?: string;
+        align?: string;
+        muted?: boolean;
+    };
+
+    const ALIGN_CLASSES: Record<string, string> = {
+        left: 'text-left',
+        center: 'text-center',
+        right: 'text-right',
+    };
+
+    export default function Text({
+        body = 'Write something here.',
+        align = 'left',
+        muted = false,
+    }: Props) {
+        return (
+            <p
+                className={cn(
+                    'leading-relaxed whitespace-pre-line',
+                    ALIGN_CLASSES[align] ?? ALIGN_CLASSES.left,
+                    muted && 'text-muted-foreground',
+                )}
+            >
+                {body}
+            </p>
+        );
+    }
