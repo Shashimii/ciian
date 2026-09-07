@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Ciian\Component\ComponentController;
 use App\Http\Controllers\Ciian\Database\TableController;
+use App\Http\Controllers\Ciian\System\PageController;
 use App\Http\Controllers\Ciian\System\SystemController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,10 +26,21 @@ Route::prefix('admin')->group(function () {
             // Registered before `systems/{system}` so that the literal path wins.
             Route::patch('systems/ciian', [SystemController::class, 'updateCiianConfig'])
                 ->name('systems.ciian.update');
+            Route::get('systems/{system}', [SystemController::class, 'show'])
+                ->name('systems.show');
             Route::patch('systems/{system}', [SystemController::class, 'update'])
                 ->name('systems.update');
             Route::post('systems/{system}/publish', [SystemController::class, 'publish'])
                 ->name('systems.publish');
+
+            Route::post('systems/{system}/pages', [PageController::class, 'store'])
+                ->name('systems.pages.store');
+            Route::patch('systems/{system}/pages/{page}', [PageController::class, 'update'])
+                ->name('systems.pages.update');
+            Route::post('systems/{system}/pages/{page}/publish', [PageController::class, 'publish'])
+                ->name('systems.pages.publish');
+            Route::delete('systems/{system}/pages/{page}', [PageController::class, 'destroy'])
+                ->name('systems.pages.destroy');
         });
 
         Route::middleware('permission:tables.manage')->group(function () {

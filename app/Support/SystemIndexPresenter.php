@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Ciian\Core\CiianConfig;
 use App\Models\Ciian\Database\InternalTable;
+use App\Models\Ciian\System\Page;
 use App\Models\Ciian\System\System;
 
 class SystemIndexPresenter
@@ -26,6 +27,22 @@ class SystemIndexPresenter
             $this->presentCiian(),
             ...$created,
         ];
+    }
+
+    /**
+     * The system's pages, starting page first, for its manage page.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function pages(System $system): array
+    {
+        $pages = [];
+
+        foreach ($system->pages()->orderByDesc('is_index')->orderBy('name')->get() as $page) {
+            $pages[] = $this->presentPage($page, $system);
+        }
+
+        return $pages;
     }
 
     /**
@@ -53,6 +70,34 @@ class SystemIndexPresenter
             'can_edit_slug' => ! $system->isPublished(),
             'tables_count' => $system->tables_count ?? $system->tables()->count(),
             'unpub_shape' => $system->unpub_shape,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentPage(Page $page, System $system): array
+    {
+        $shape = is_array($page->unpub_shape) ? $page->unpub_shape : [];
+        $path = is_string($shape['path'] ?? null) ? $shape['path'] : '/';
+
+        return [
+            'key' => "page:{$page->id}",
+            'id' => $page->id,
+            'name' => $page->name,
+            'slug' => $page->slug,
+            'is_index' => $page->is_index,
+            'path' => $path,
+            // What the page will answer on once the system is live.
+            'url' => rtrim(rtrim((string) ($system->unpub_shape['entry'] ?? ''), '/').$path, '/') ?: '/',
+            'status' => $page->status,
+            'has_pending_changes' => $page->hasPendingChanges(),
+            'can_publish' => ! $page->isPublished() || $page->hasPendingChanges(),
+            'is_sync' => $page->isPublished() && $page->hasPendingChanges(),
+            // The starting page is the system's entry point: it never goes away,
+            // and its slug is not the user's to change.
+            'can_delete' => ! $page->is_index,
+            'can_edit_slug' => ! $page->is_index && ! $page->isPublished(),
         ];
     }
 

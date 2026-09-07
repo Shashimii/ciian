@@ -54,6 +54,18 @@ class SystemController extends Controller
     }
 
     /**
+     * Show the manage page for a single created system.
+     */
+    public function show(CreatedSystem $system, SystemIndexPresenter $presenter): Response
+    {
+        return Inertia::render('system/view', [
+            'system' => $presenter->present($system->loadCount('tables')),
+            'pages' => $presenter->pages($system),
+            'tagColors' => TagColors::OPTIONS,
+        ]);
+    }
+
+    /**
      * Update a system draft (metadata + unpub_shape).
      */
     public function update(
@@ -68,7 +80,7 @@ class SystemController extends Controller
             'message' => __('System draft updated.'),
         ]);
 
-        return to_route('systems.index');
+        return back();
     }
 
     /**
