@@ -49,7 +49,7 @@ Use the shared `DataTable` (`@/components/data-table`) for list indexes.
 - Pagination: client-side by default (`pageSize`, default `10`) with Previous / Next and result range.
 - Selection (when needed): enable `selection` so the checkbox column is **first**.
 - Row delete (when needed): pass `onDelete`. The delete column has a **blank header**, a centered `Trash2` icon button (`text-destructive`, `hover:bg-destructive/10`), tooltip/`aria-label` **Delete**, and `stopPropagation` so it does not fire `onRowClick`.
-- Protected rows: pass `isProtected` (Tables uses `(row) => !row.can_delete`). The action swaps `Trash2` for `Lock` and the button is **disabled**, with tooltip/`aria-label` **Protected Table** — the row can never be deleted, so the control must not look clickable. Because it is disabled, its tooltip needs the span wrapper described under Uniformity.
+- Protected rows: pass `isProtected` (Tables uses `(row) => !row.can_delete`). The action swaps `Trash2` for `Lock` and the button is **disabled**, with a tooltip/`aria-label` from `protectedLabel` (default **Protected Table**; Components passes **Protected Component**) — the row can never be deleted, so the control must not look clickable. Because it is disabled, its tooltip needs the span wrapper described under Uniformity.
 - Row publish (when needed): pass `onPublish` / `canPublish`. Unpublished rows use an `Upload` icon with tooltip/`aria-label` **Publish**. Published rows with pending `unpub_shape` changes use `isSync` so the action shows a `RefreshCw` icon with tooltip/`aria-label` **Sync**. Show for unpublished tables and for published tables with pending changes.
 - Prefer `onRowClick` to open edit in a `FormSidebar` rather than a separate edit icon column.
 - Do **not** use `window.confirm` / `alert` for delete — use `ConfirmDialog`.
@@ -178,3 +178,6 @@ Tags are always rendered as **pill badges** via `TagBadge` (`@/components/tag-ba
 ## Wayfinder
 
 - Regenerate typed routes with **`php artisan wayfinder:generate --with-form`**. The flag is required: `vite.config.ts` sets `formVariants: true`, but the Artisan command does not read that config and defaults the flag off, so a bare run silently strips the `.form` variant off every route and breaks every form page at once. See `.ai/fixes/wayfinder-form-variants.md`.
+
+## DataTable protected-row tooltip is named per resource
+`DataTable`'s `isProtected` lock tooltip/aria-label comes from the optional `protectedLabel` prop, which defaults to "Protected Table" so the Tables index keeps its wording. Any other index that passes `isProtected` must pass a label naming what it lists — the Components index passes "Protected Component". Do not leave the default in place on a table that does not list database tables; the tooltip is the only explanation the user gets for a dead control.
