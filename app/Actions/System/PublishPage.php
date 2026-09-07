@@ -10,7 +10,11 @@ use InvalidArgumentException;
 
 class PublishPage
 {
-    public function __construct(private PageShapeBuilder $shapes) {}
+    public function __construct(
+        private PageShapeBuilder $shapes,
+        private GeneratePageFile $files,
+        private GenerateSystemRoutes $routes,
+    ) {}
 
     /**
      * Publish or sync a page draft: copy unpub_shape → pub_shape, status=published.
@@ -43,7 +47,7 @@ class PublishPage
             ]);
         }
 
-        return DB::transaction(function () use ($page, $normalized): Page {
+        $page = DB::transaction(function () use ($page, $normalized): Page {
             $page->unpub_shape = $normalized;
             $page->pub_shape = $normalized;
             $page->status = Page::STATUS_PUBLISHED;
@@ -51,5 +55,13 @@ class PublishPage
 
             return $page->refresh();
         });
+
+        // Written after the row commits: a row without its file regenerates on the
+        // next publish, while a file without a row is invisible and confusing.
+        $page->loadMissing('system');
+        $this->files->handle($page->system, $page);
+        $this->routes->handle();
+
+        return $page;
     }
 }

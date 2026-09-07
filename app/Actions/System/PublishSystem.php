@@ -10,7 +10,11 @@ use InvalidArgumentException;
 
 class PublishSystem
 {
-    public function __construct(private SystemShapeBuilder $shapes) {}
+    public function __construct(
+        private SystemShapeBuilder $shapes,
+        private GeneratePageFile $files,
+        private GenerateSystemRoutes $routes,
+    ) {}
 
     /**
      * Publish or sync a system draft: copy unpub_shape → pub_shape, status=published.
@@ -44,7 +48,7 @@ class PublishSystem
             ]);
         }
 
-        return DB::transaction(function () use ($system, $normalized): System {
+        $system = DB::transaction(function () use ($system, $normalized): System {
             $system->unpub_shape = $normalized;
             $system->pub_shape = $normalized;
             $system->status = System::STATUS_PUBLISHED;
@@ -52,5 +56,13 @@ class PublishSystem
 
             return $system->refresh();
         });
+
+        // Going live gives the system its own page folder under resources/js/pages,
+        // holding a file for each page that is already published, and puts those
+        // pages on the route table.
+        $this->files->handleSystem($system);
+        $this->routes->handle();
+
+        return $system;
     }
 }

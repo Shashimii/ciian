@@ -10,9 +10,14 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
-    // Ciian's own control-panel pages live under `pages/core/`; pages belonging
-    // to systems built inside Ciian get their own root alongside it.
+    // Ciian's own control-panel pages live under `pages/core/`. Every other page
+    // root is a folder generated for a created system, whose pages bring their
+    // own chrome — they must never be wrapped in Ciian's admin shell.
     layout: (name) => {
+        if (!name.startsWith('core/')) {
+            return null;
+        }
+
         switch (true) {
             case name === 'core/welcome':
             case name === 'core/error':
