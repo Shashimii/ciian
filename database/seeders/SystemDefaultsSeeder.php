@@ -102,11 +102,6 @@ class SystemDefaultsSeeder extends Seeder
                 'description' => 'Create, edit, publish, and delete UI building blocks.',
             ],
             [
-                'name' => 'Manage Layouts',
-                'slug' => 'layouts.manage',
-                'description' => 'Create, edit, publish, and delete page shells.',
-            ],
-            [
                 'name' => 'Manage Systems',
                 'slug' => 'systems.manage',
                 'description' => 'Create and configure systems in the System Builder.',

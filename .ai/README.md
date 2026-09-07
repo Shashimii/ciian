@@ -16,7 +16,7 @@ every agent to read `.ai/rules/index.md` before creating or editing a file.
 | `rules/` | Enforced project conventions, scoped by file glob. **Read before writing code.** |
 | `rules/index.md` | Glob → rule file table. Generated — do not hand-edit. |
 | `context/` | What Ciian is (`overview.md`) and the build roadmap (`flow.md`). |
-| `shapes/` | JSON contracts: `db_table_format.md` (live), `cmp_format.md` (planned). |
+| `shapes/` | JSON contracts: `db_table_format.md` (live), `cmp_format.md` (partly implemented) with a worked `cmp_example.yaml`. |
 | `chores/` | Step-by-step recipes for rebuilding a feature from scratch. |
 | `fixes/` | Post-mortems for non-obvious bugs: symptom, root cause, fix, how to avoid a repeat. |
 | `skills/` | Canonical source for this project's hand-written agent skills. |
