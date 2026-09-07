@@ -8,15 +8,19 @@ import {
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { toast } from 'sonner';
 import DataTable from '@/components/core/data-table';
 import type { DataTableColumn } from '@/components/core/data-table';
 import FormSidebar from '@/components/core/form-sidebar';
 import InputError from '@/components/core/input-error';
+import { Modal } from '@/components/core/modal';
 import TagBadge from '@/components/core/tag-badge';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Tooltip,
     TooltipContent,
@@ -25,7 +29,12 @@ import {
 import { clearFieldErrors } from '@/lib/clear-field-errors';
 import { resolveLucideIcon, TABLE_ICON_OPTIONS } from '@/lib/lucide-icons';
 import { cn } from '@/lib/utils';
-import { index as systemsIndex, store } from '@/routes/systems';
+import {
+    index as systemsIndex,
+    publish,
+    store,
+    update,
+} from '@/routes/systems';
 import { update as updateCiian } from '@/routes/systems/ciian';
 import type { CiianConfigData, SystemRow } from '@/types';
 
@@ -34,6 +43,14 @@ type Props = {
     ciianConfig: CiianConfigData;
     tagColors: string[];
 };
+
+type ErrorDetail = {
+    title: string;
+    message: string;
+};
+
+/** Longer than this and the message goes to a modal instead of a toast. */
+const ERROR_TOAST_MAX_LENGTH = 120;
 
 function slugify(value: string): string {
     return value
@@ -63,19 +80,121 @@ const COLOR_SWATCHES: Record<string, string> = {
     indigo: 'bg-indigo-500',
 };
 
+type IconPickerProps = {
+    open: boolean;
+    selected: string;
+    onSelect: (icon: string) => void;
+};
+
+/** Full-width grid of icon options, shown under the icon + name row. */
+function IconPicker({ open, selected, onSelect }: IconPickerProps) {
+    if (!open) {
+        return null;
+    }
+
+    return (
+        <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-12">
+            {TABLE_ICON_OPTIONS.map((iconName) => {
+                const IconComponent = resolveLucideIcon(iconName);
+
+                return (
+                    <Tooltip key={iconName}>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                aria-label={iconName}
+                                className={cn(
+                                    'flex h-10 items-center justify-center rounded-md border',
+                                    selected === iconName &&
+                                        'border-primary bg-primary/10 text-primary',
+                                )}
+                                onClick={() => onSelect(iconName)}
+                            >
+                                {IconComponent && (
+                                    <Icon
+                                        iconNode={IconComponent}
+                                        className="size-4"
+                                    />
+                                )}
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{iconName}</TooltipContent>
+                    </Tooltip>
+                );
+            })}
+        </div>
+    );
+}
+
+type ColorPickerProps = {
+    colors: string[];
+    selected: string;
+    onSelect: (color: string) => void;
+};
+
+function ColorPicker({ colors, selected, onSelect }: ColorPickerProps) {
+    return (
+        <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-9">
+            {colors.map((color) => (
+                <Tooltip key={color}>
+                    <TooltipTrigger asChild>
+                        <button
+                            type="button"
+                            aria-label={color}
+                            className={cn(
+                                'flex h-10 items-center justify-center rounded-md border',
+                                selected === color &&
+                                    'border-primary ring-2 ring-primary/30',
+                            )}
+                            onClick={() => onSelect(color)}
+                        >
+                            <span
+                                className={cn(
+                                    'size-5 rounded-full',
+                                    COLOR_SWATCHES[color] ?? 'bg-violet-500',
+                                )}
+                            />
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{color}</TooltipContent>
+                </Tooltip>
+            ))}
+        </div>
+    );
+}
+
 export default function SystemIndex({
     systems,
     ciianConfig,
     tagColors,
 }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editing, setEditing] = useState<SystemRow | null>(null);
     const [ciianOpen, setCiianOpen] = useState(false);
-    const [showIconPicker, setShowIconPicker] = useState(false);
+    const [publishingKey, setPublishingKey] = useState<string | null>(null);
+    const [errorOpen, setErrorOpen] = useState(false);
+    const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
+
+    const [showCreateIconPicker, setShowCreateIconPicker] = useState(false);
+    const [showEditIconPicker, setShowEditIconPicker] = useState(false);
+    const [showCiianIconPicker, setShowCiianIconPicker] = useState(false);
     const [iconTooltipOpen, setIconTooltipOpen] = useState(false);
 
     const createForm = useForm({
         name: '',
         slug: '',
+        icon: 'Box',
+        color: 'violet',
+        description: '',
+    });
+
+    const editForm = useForm({
+        name: '',
+        slug: '',
+        icon: 'Box',
+        color: 'violet',
+        description: '',
     });
 
     const ciianForm = useForm({
@@ -85,7 +204,31 @@ export default function SystemIndex({
         color: ciianConfig.color,
     });
 
+    const selectedCreateIcon = resolveLucideIcon(createForm.data.icon);
+    const selectedEditIcon = resolveLucideIcon(editForm.data.icon);
     const selectedCiianIcon = resolveLucideIcon(ciianForm.data.icon);
+
+    // Keep the payload while the sheet fades out so its content stays stable.
+    useEffect(() => {
+        if (editOpen) {
+            return;
+        }
+
+        const timer = setTimeout(() => setEditing(null), 200);
+
+        return () => clearTimeout(timer);
+    }, [editOpen]);
+
+    // Keep the payload while the dialog fades out so its content stays stable.
+    useEffect(() => {
+        if (errorOpen) {
+            return;
+        }
+
+        const timer = setTimeout(() => setErrorDetail(null), 200);
+
+        return () => clearTimeout(timer);
+    }, [errorOpen]);
 
     useEffect(() => {
         setLayoutProps({
@@ -166,13 +309,53 @@ export default function SystemIndex({
                 searchValue: (row) => row.tables_count,
                 cell: (row) => row.tables_count,
             },
+            {
+                id: 'status',
+                header: 'Status',
+                sortable: true,
+                sortValue: (row) => row.status,
+                searchValue: (row) => row.status,
+                cell: (row) => (
+                    <Badge
+                        variant={
+                            row.status === 'published' ? 'default' : 'secondary'
+                        }
+                    >
+                        {row.status === 'published'
+                            ? 'Published'
+                            : 'Unpublished'}
+                    </Badge>
+                ),
+            },
         ],
         [],
     );
 
+    // Long server errors are unreadable in a toast, so offer them in a modal instead.
+    const showError = (title: string, message: string) => {
+        if (message.length <= ERROR_TOAST_MAX_LENGTH) {
+            toast.error(message, { duration: 12000 });
+
+            return;
+        }
+
+        toast.error('Error encountered', {
+            description: title,
+            duration: 15000,
+            action: {
+                label: 'View',
+                onClick: () => {
+                    setErrorDetail({ title, message });
+                    setErrorOpen(true);
+                },
+            },
+        });
+    };
+
     const resetCreateForm = () => {
         createForm.reset();
         createForm.clearErrors();
+        setShowCreateIconPicker(false);
     };
 
     const closeCreate = (open: boolean) => {
@@ -180,6 +363,33 @@ export default function SystemIndex({
 
         if (!open) {
             window.setTimeout(resetCreateForm, 200);
+        }
+    };
+
+    const openEdit = (system: SystemRow) => {
+        setEditing(system);
+        editForm.setData({
+            name: system.name,
+            slug: system.slug,
+            icon: system.icon,
+            color: system.color ?? 'violet',
+            description: system.description ?? '',
+        });
+        editForm.clearErrors();
+        setShowEditIconPicker(false);
+        setIconTooltipOpen(false);
+        setEditOpen(true);
+    };
+
+    const closeEdit = (open: boolean) => {
+        setEditOpen(open);
+
+        if (!open) {
+            window.setTimeout(() => {
+                setShowEditIconPicker(false);
+                setIconTooltipOpen(false);
+                editForm.clearErrors();
+            }, 200);
         }
     };
 
@@ -191,7 +401,7 @@ export default function SystemIndex({
             color: ciianConfig.color,
         });
         ciianForm.clearErrors();
-        setShowIconPicker(false);
+        setShowCiianIconPicker(false);
         setIconTooltipOpen(false);
         setCiianOpen(true);
     };
@@ -201,7 +411,7 @@ export default function SystemIndex({
 
         if (!open) {
             window.setTimeout(() => {
-                setShowIconPicker(false);
+                setShowCiianIconPicker(false);
                 setIconTooltipOpen(false);
                 ciianForm.clearErrors();
             }, 200);
@@ -215,6 +425,24 @@ export default function SystemIndex({
             preserveScroll: true,
             invalidateCacheTags: ['systems', 'tables'],
             onSuccess: () => closeCreate(false),
+        });
+    };
+
+    const submitEdit = (event: FormEvent) => {
+        event.preventDefault();
+
+        if (!editing) {
+            return;
+        }
+
+        editForm.patch(update.url(editing.id), {
+            preserveScroll: true,
+            invalidateCacheTags: ['systems', 'tables'],
+            onSuccess: () => {
+                // Badge icon/color appear on untagged pages (e.g. Tables) too.
+                router.flushAll();
+                closeEdit(false);
+            },
         });
     };
 
@@ -232,6 +460,35 @@ export default function SystemIndex({
         });
     };
 
+    const publishSystem = (system: SystemRow) => {
+        const label = system.is_sync ? 'Syncing' : 'Publishing';
+        let toastId: string | number | undefined;
+
+        router.post(
+            publish.url(system.id),
+            {},
+            {
+                preserveScroll: true,
+                invalidateCacheTags: ['systems'],
+                onStart: () => {
+                    setPublishingKey(system.key);
+                    toastId = toast.loading(`${label} ${system.name}…`);
+                },
+                onError: (errors) => {
+                    showError(
+                        `${system.name} could not be ${system.is_sync ? 'synced' : 'published'}`,
+                        errors.shape ??
+                            'The system could not be published. No reason was returned.',
+                    );
+                },
+                onFinish: () => {
+                    setPublishingKey(null);
+                    toast.dismiss(toastId);
+                },
+            },
+        );
+    };
+
     return (
         <>
             <Head title="Systems" />
@@ -246,8 +503,16 @@ export default function SystemIndex({
                     onRowClick={(row) => {
                         if (row.kind === 'ciian') {
                             openCiian();
+
+                            return;
                         }
+
+                        openEdit(row);
                     }}
+                    onPublish={publishSystem}
+                    canPublish={(row) => row.can_publish}
+                    isSync={(row) => row.is_sync}
+                    publishingKey={publishingKey}
                 />
             </div>
 
@@ -282,21 +547,69 @@ export default function SystemIndex({
                     className="space-y-4"
                     onSubmit={submitCreate}
                 >
-                    <div className="space-y-2">
-                        <Label htmlFor="system-name">Name</Label>
-                        <Input
-                            id="system-name"
-                            value={createForm.data.name}
-                            onChange={(event) => {
-                                const name = event.target.value;
-                                createForm.setData('name', name);
-                                createForm.setData('slug', slugify(name));
-                                clearFieldErrors(createForm, 'name', 'slug');
-                            }}
-                            placeholder="Enter System Name"
-                        />
-                        <InputError message={createForm.errors.name} />
+                    <div className="flex items-end gap-3">
+                        <div className="order-1 min-w-0 flex-1 space-y-2">
+                            <Label htmlFor="system-name">Name</Label>
+                            <Input
+                                id="system-name"
+                                value={createForm.data.name}
+                                onChange={(event) => {
+                                    const name = event.target.value;
+                                    createForm.setData('name', name);
+                                    createForm.setData('slug', slugify(name));
+                                    clearFieldErrors(
+                                        createForm,
+                                        'name',
+                                        'slug',
+                                    );
+                                }}
+                                placeholder="Enter System Name"
+                            />
+                            <InputError message={createForm.errors.name} />
+                        </div>
+
+                        <Tooltip
+                            open={iconTooltipOpen && createOpen}
+                            onOpenChange={setIconTooltipOpen}
+                        >
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="order-2 flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60"
+                                    aria-label="Change icon"
+                                    onPointerEnter={() =>
+                                        setIconTooltipOpen(true)
+                                    }
+                                    onPointerLeave={() =>
+                                        setIconTooltipOpen(false)
+                                    }
+                                    onClick={() =>
+                                        setShowCreateIconPicker(
+                                            (current) => !current,
+                                        )
+                                    }
+                                >
+                                    {selectedCreateIcon && (
+                                        <Icon
+                                            iconNode={selectedCreateIcon}
+                                            className="size-7"
+                                        />
+                                    )}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Change icon</TooltipContent>
+                        </Tooltip>
                     </div>
+
+                    <IconPicker
+                        open={showCreateIconPicker}
+                        selected={createForm.data.icon}
+                        onSelect={(icon) => {
+                            createForm.setData('icon', icon);
+                            clearFieldErrors(createForm, 'icon');
+                            setShowCreateIconPicker(false);
+                        }}
+                    />
 
                     <div className="space-y-2">
                         <Label htmlFor="system-slug">Slug</Label>
@@ -306,8 +619,201 @@ export default function SystemIndex({
                             readOnly
                             placeholder="Enter System Slug"
                         />
+                        <p className="text-xs text-muted-foreground">
+                            The system is served from{' '}
+                            <span className="font-mono">
+                                /s/{createForm.data.slug || '…'}
+                            </span>{' '}
+                            once published. It locks at that point.
+                        </p>
                         <InputError message={createForm.errors.slug} />
                     </div>
+
+                    <div className="space-y-2">
+                        <Label>Tag color</Label>
+                        <ColorPicker
+                            colors={tagColors}
+                            selected={createForm.data.color}
+                            onSelect={(color) => {
+                                createForm.setData('color', color);
+                                clearFieldErrors(createForm, 'color');
+                            }}
+                        />
+                        <InputError message={createForm.errors.color} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="system-description">Description</Label>
+                        <Textarea
+                            id="system-description"
+                            value={createForm.data.description}
+                            onChange={(event) => {
+                                createForm.setData(
+                                    'description',
+                                    event.target.value,
+                                );
+                                clearFieldErrors(createForm, 'description');
+                            }}
+                            placeholder="What is this system for?"
+                        />
+                        <InputError message={createForm.errors.description} />
+                    </div>
+
+                    <InputError message={createForm.errors.icon} />
+                </form>
+            </FormSidebar>
+
+            <FormSidebar
+                open={editOpen}
+                onOpenChange={closeEdit}
+                title="Edit system"
+                description={
+                    editing?.status === 'published'
+                        ? 'Changes are saved to the draft. Sync the row to take them live.'
+                        : 'Changes are saved to the draft until the system is published.'
+                }
+                footer={
+                    <div className="flex items-center justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => closeEdit(false)}
+                            disabled={editForm.processing}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            form="system-edit-form"
+                            disabled={editForm.processing}
+                        >
+                            Save changes
+                        </Button>
+                    </div>
+                }
+            >
+                <form
+                    id="system-edit-form"
+                    noValidate
+                    className="space-y-4"
+                    onSubmit={submitEdit}
+                >
+                    <div className="flex items-end gap-3">
+                        <div className="order-1 min-w-0 flex-1 space-y-2">
+                            <Label htmlFor="system-edit-name">Name</Label>
+                            <Input
+                                id="system-edit-name"
+                                value={editForm.data.name}
+                                onChange={(event) => {
+                                    const name = event.target.value;
+                                    editForm.setData('name', name);
+
+                                    // The slug is still free to follow the name
+                                    // while the system has never been published.
+                                    if (editing?.can_edit_slug) {
+                                        editForm.setData('slug', slugify(name));
+                                    }
+
+                                    clearFieldErrors(editForm, 'name', 'slug');
+                                }}
+                                placeholder="Enter System Name"
+                            />
+                            <InputError message={editForm.errors.name} />
+                        </div>
+
+                        <Tooltip
+                            open={iconTooltipOpen && editOpen}
+                            onOpenChange={setIconTooltipOpen}
+                        >
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="order-2 flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60"
+                                    aria-label="Change icon"
+                                    onPointerEnter={() =>
+                                        setIconTooltipOpen(true)
+                                    }
+                                    onPointerLeave={() =>
+                                        setIconTooltipOpen(false)
+                                    }
+                                    onClick={() =>
+                                        setShowEditIconPicker(
+                                            (current) => !current,
+                                        )
+                                    }
+                                >
+                                    {selectedEditIcon && (
+                                        <Icon
+                                            iconNode={selectedEditIcon}
+                                            className="size-7"
+                                        />
+                                    )}
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Change icon</TooltipContent>
+                        </Tooltip>
+                    </div>
+
+                    <IconPicker
+                        open={showEditIconPicker}
+                        selected={editForm.data.icon}
+                        onSelect={(icon) => {
+                            editForm.setData('icon', icon);
+                            clearFieldErrors(editForm, 'icon');
+                            setShowEditIconPicker(false);
+                        }}
+                    />
+
+                    <div className="space-y-2">
+                        <Label htmlFor="system-edit-slug">Slug</Label>
+                        <Input
+                            id="system-edit-slug"
+                            value={editForm.data.slug}
+                            readOnly
+                            disabled={!editing?.can_edit_slug}
+                            placeholder="Enter System Slug"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            {editing?.can_edit_slug
+                                ? 'Follows the name until the system is published.'
+                                : 'Locked — the published system is served from this path.'}
+                        </p>
+                        <InputError message={editForm.errors.slug} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Tag color</Label>
+                        <ColorPicker
+                            colors={tagColors}
+                            selected={editForm.data.color}
+                            onSelect={(color) => {
+                                editForm.setData('color', color);
+                                clearFieldErrors(editForm, 'color');
+                            }}
+                        />
+                        <InputError message={editForm.errors.color} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="system-edit-description">
+                            Description
+                        </Label>
+                        <Textarea
+                            id="system-edit-description"
+                            value={editForm.data.description}
+                            onChange={(event) => {
+                                editForm.setData(
+                                    'description',
+                                    event.target.value,
+                                );
+                                clearFieldErrors(editForm, 'description');
+                            }}
+                            placeholder="What is this system for?"
+                        />
+                        <InputError message={editForm.errors.description} />
+                    </div>
+
+                    <InputError message={editForm.errors.icon} />
                 </form>
             </FormSidebar>
 
@@ -355,7 +861,7 @@ export default function SystemIndex({
                         </div>
 
                         <Tooltip
-                            open={iconTooltipOpen}
+                            open={iconTooltipOpen && ciianOpen}
                             onOpenChange={setIconTooltipOpen}
                         >
                             <TooltipTrigger asChild>
@@ -370,7 +876,9 @@ export default function SystemIndex({
                                         setIconTooltipOpen(false)
                                     }
                                     onClick={() =>
-                                        setShowIconPicker((current) => !current)
+                                        setShowCiianIconPicker(
+                                            (current) => !current,
+                                        )
                                     }
                                 >
                                     {selectedCiianIcon && (
@@ -385,52 +893,15 @@ export default function SystemIndex({
                         </Tooltip>
                     </div>
 
-                    {showIconPicker && (
-                        <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-12">
-                            {TABLE_ICON_OPTIONS.map((iconName) => {
-                                const IconComponent =
-                                    resolveLucideIcon(iconName);
-
-                                return (
-                                    <Tooltip key={iconName}>
-                                        <TooltipTrigger asChild>
-                                            <button
-                                                type="button"
-                                                aria-label={iconName}
-                                                className={cn(
-                                                    'flex h-10 items-center justify-center rounded-md border',
-                                                    ciianForm.data.icon ===
-                                                        iconName &&
-                                                        'border-primary bg-primary/10 text-primary',
-                                                )}
-                                                onClick={() => {
-                                                    ciianForm.setData(
-                                                        'icon',
-                                                        iconName,
-                                                    );
-                                                    clearFieldErrors(
-                                                        ciianForm,
-                                                        'icon',
-                                                    );
-                                                    setShowIconPicker(false);
-                                                }}
-                                            >
-                                                {IconComponent && (
-                                                    <Icon
-                                                        iconNode={IconComponent}
-                                                        className="size-4"
-                                                    />
-                                                )}
-                                            </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            {iconName}
-                                        </TooltipContent>
-                                    </Tooltip>
-                                );
-                            })}
-                        </div>
-                    )}
+                    <IconPicker
+                        open={showCiianIconPicker}
+                        selected={ciianForm.data.icon}
+                        onSelect={(icon) => {
+                            ciianForm.setData('icon', icon);
+                            clearFieldErrors(ciianForm, 'icon');
+                            setShowCiianIconPicker(false);
+                        }}
+                    />
 
                     <div className="space-y-2">
                         <Label htmlFor="ciian-sys-slug">System slug</Label>
@@ -445,49 +916,44 @@ export default function SystemIndex({
 
                     <div className="space-y-2">
                         <Label>Tag color</Label>
-                        <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-9">
-                            {tagColors.map((color) => (
-                                <Tooltip key={color}>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            type="button"
-                                            aria-label={color}
-                                            className={cn(
-                                                'flex h-10 items-center justify-center rounded-md border',
-                                                ciianForm.data.color ===
-                                                    color &&
-                                                    'border-primary ring-2 ring-primary/30',
-                                            )}
-                                            onClick={() => {
-                                                ciianForm.setData(
-                                                    'color',
-                                                    color,
-                                                );
-                                                clearFieldErrors(
-                                                    ciianForm,
-                                                    'color',
-                                                );
-                                            }}
-                                        >
-                                            <span
-                                                className={cn(
-                                                    'size-5 rounded-full',
-                                                    COLOR_SWATCHES[color] ??
-                                                        'bg-violet-500',
-                                                )}
-                                            />
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>{color}</TooltipContent>
-                                </Tooltip>
-                            ))}
-                        </div>
+                        <ColorPicker
+                            colors={tagColors}
+                            selected={ciianForm.data.color}
+                            onSelect={(color) => {
+                                ciianForm.setData('color', color);
+                                clearFieldErrors(ciianForm, 'color');
+                            }}
+                        />
                         <InputError message={ciianForm.errors.color} />
                     </div>
 
                     <InputError message={ciianForm.errors.icon} />
                 </form>
             </FormSidebar>
+
+            <Modal
+                open={errorOpen}
+                onOpenChange={setErrorOpen}
+                tone="destructive"
+                size="xl"
+                title={errorDetail?.title ?? 'Error encountered'}
+                description="The system was left on its previous state. Nothing was applied."
+                footer={
+                    <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setErrorOpen(false)}
+                    >
+                        Close
+                    </Button>
+                }
+            >
+                {errorDetail && (
+                    <pre className="max-h-56 overflow-auto rounded-md bg-destructive/10 p-3 text-left font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-destructive">
+                        {errorDetail.message}
+                    </pre>
+                )}
+            </Modal>
         </>
     );
 }
