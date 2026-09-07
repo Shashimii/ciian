@@ -13,7 +13,6 @@ class SaveSystemDraft
     public function __construct(
         private SystemShapeBuilder $shapes,
         private SavePageDraft $pages,
-        private GeneratePageFile $files,
     ) {}
 
     /**
@@ -118,10 +117,8 @@ class SaveSystemDraft
             return $system->refresh();
         });
 
-        // The system's page folder is named after its slug, so a rename has to take
-        // any already generated pages with it rather than stranding them.
-        $this->files->moveDirectory($previousSlug, $system->slug);
-
+        // No page folder can exist yet: pages only publish once their system does,
+        // and publishing locks the slug. So a rename never has files to move.
         return $system;
     }
 

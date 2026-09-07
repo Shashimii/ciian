@@ -172,3 +172,12 @@ Both `slug` and `prefix` lock together when the system is published: `SaveSystem
 Deleting a **published** system needs the current user's password: `SystemController::destroy()` verifies it with `Hash::check` and passes a plain `true` into `$confirmedPassword`, which the action trusts rather than re-verifying — the same split as `DeleteTable` and `PublishTable`. An unpublished draft serves nothing yet and needs no confirmation.
 
 The Ciian platform row on the systems index is not a created system: the presenter marks it `can_delete: false` so its delete control renders as a disabled "Protected System" lock.
+
+## A page cannot publish before its system does
+`PublishPage::handle()` refuses outright while `$page->system` is unpublished, and `SystemIndexPresenter` reports `can_publish: false` for every page of an unpublished system so the row action does not appear.
+
+The reason is that publishing a page writes real output named after things that are still moving: the file goes in `resources/js/pages/{system slug}/` and the route answers on the system's URL prefix, and both the slug and the prefix stay editable until the system is published. Letting a page go first would strand a file and a route under a name free to change.
+
+That ordering removes a whole class of problem: **no page folder can exist while a system's slug is still editable**, so renaming a draft system never has generated files to move. `SaveSystemDraft::update()` therefore does no filesystem work at all — it only calls `SavePageDraft::reslugSystem()` to fix the stored shapes. Do not reintroduce a directory-move path here; if you find yourself needing one, the publish ordering has been broken somewhere.
+
+Because the constraint hides the publish control rather than disabling it, the Pages section on the system manage page changes its description while the system is a draft, to say the system must be published first — a silently missing action is worse than a stated reason.

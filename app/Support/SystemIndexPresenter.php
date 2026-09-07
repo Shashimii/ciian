@@ -99,7 +99,10 @@ class SystemIndexPresenter
             'url' => rtrim(rtrim((string) ($system->unpub_shape['entry'] ?? ''), '/').$path, '/') ?: '/',
             'status' => $page->status,
             'has_pending_changes' => $page->hasPendingChanges(),
-            'can_publish' => ! $page->isPublished() || $page->hasPendingChanges(),
+            // A page cannot go live ahead of the system that serves it: until the
+            // system is published its prefix and slug are both still editable.
+            'can_publish' => $system->isPublished()
+                && (! $page->isPublished() || $page->hasPendingChanges()),
             'is_sync' => $page->isPublished() && $page->hasPendingChanges(),
             // The starting page is the system's entry point: it never goes away,
             // and its slug is not the user's to change.

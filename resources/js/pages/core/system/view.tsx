@@ -773,7 +773,14 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                 <div className="lg:col-span-3">
                     <Section
                         title="Pages"
-                        description="Every system keeps a starting page at its entry path. Add more pages to build the rest of it."
+                        description={
+                            // With the system still a draft its prefix and slug can
+                            // change, so no page may go live ahead of it and the
+                            // publish action is absent until then.
+                            system.status === 'published'
+                                ? 'Every system keeps a starting page at its entry path. Add more pages to build the rest of it.'
+                                : `Every system keeps a starting page at its entry path. Publish ${system.name} before you can publish any of its pages.`
+                        }
                         action={
                             <Button
                                 type="button"

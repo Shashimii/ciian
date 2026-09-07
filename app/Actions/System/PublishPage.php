@@ -24,6 +24,20 @@ class PublishPage
      */
     public function handle(Page $page): Page
     {
+        $page->loadMissing('system');
+
+        // A page is served from its system's URL prefix and lives in the folder
+        // named after its slug, neither of which is settled until the system goes
+        // live. Publishing one first would generate a file and a route under a
+        // name still free to change.
+        if (! $page->system->isPublished()) {
+            throw ValidationException::withMessages([
+                'shape' => __('Publish :system before publishing its pages.', [
+                    'system' => $page->system->name,
+                ]),
+            ]);
+        }
+
         $shape = $page->unpub_shape;
 
         if (! is_array($shape) || $shape === []) {
