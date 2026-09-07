@@ -138,3 +138,28 @@ Pages belong to a system, not to the platform: `ciian_sys_pg` (`App\Models\Ciian
 `path` is derived from the slug in `PageShapeBuilder::normalize()` every time, never read back from storage, so a stored path cannot drift from the page it describes. A slug locks once the page is published (`SavePageDraft::slugIsLocked()`), and the index page's slug is locked always. When a still-unpublished system's slug changes, `SaveSystemDraft::update()` calls `SavePageDraft::reslugSystem()` so no page shape keeps pointing at the old `pg_sys`.
 
 Pages are managed from the system's own manage page (`/admin/systems/{system}`), not a global admin module — the standalone Layouts module was removed for exactly that reason.
+
+## Publishing a system page generates its file under resources/js/pages/{system}
+A created system owns a folder named after its slug directly under `resources/js/pages/`, a sibling of Ciian's own `core/`, so its Inertia page name is `{system}/{page}` — e.g. `payroll/index`. `App\Support\SystemPagePath` resolves every path and name; do not build them by hand.
+
+`App\Actions\System\GeneratePageFile` writes the TSX, the way `GenerateEloquentModel` writes a model on table publish. It is called from `PublishPage::handle()` (one page), `PublishSystem::handle()` (creates the folder and rewrites every already-published page), and `DeletePage::handle()` (removes the file). In each case the DB write commits first and the file follows: a row without its file regenerates on the next publish, while a file without a row is invisible and blocks reusing the slug.
+
+These files are **build output**, gitignored via `/resources/js/pages/*` + `!/resources/js/pages/core`. Republishing overwrites them, so never hand-edit one or add tracked content to a system folder.
+
+Two invariants keep the folder name honest. A system slug may not be a reserved top-level page folder — `SystemPagePath::RESERVED_FOLDERS` (currently `core`), enforced by `Rule::notIn` in both system requests. And renaming a still-unpublished system moves its folder: `SaveSystemDraft::update()` calls `GeneratePageFile::moveDirectory()` after the transaction, alongside the `reslugSystem()` call that fixes the shapes.
+
+The layout resolver in `resources/js/app.tsx` returns `null` for any page name not starting with `core/`, so a generated system page is never wrapped in Ciian's admin shell. Keep that guard if you add page roots.
+
+Not wired yet: nothing serves these files. `routes/systems.php` is still empty, so a generated page builds but has no route.
+
+## A system's URL prefix is separate from its slug
+A created system carries two identifiers and they are not interchangeable:
+
+- **`slug`** (snake_case) is the internal identity. It names the generated page folder `resources/js/pages/{slug}/` and therefore the Inertia page name `{slug}/{page}`.
+- **`prefix`** (lowercase, dashes or underscores) is the public URL. The system answers on `/{prefix}` directly at the top level — there is no shared `/s` namespace.
+
+So a system slugged `payroll_system` with prefix `payroll` serves `/payroll` from the file `resources/js/pages/payroll_system/index.tsx`. Do not collapse the two; changing one must not silently change the other.
+
+Because a prefix competes with every route Ciian registers, `App\Support\SystemUrlPrefix::RESERVED` lists the top-level segments the platform owns (`admin`, `settings`, `login`, `storage`, `s`, …) and both system form requests refuse them via `Rule::notIn`. Keep that list in step with the first segment of every route in `guest.php`, `settings.php` and `admin.php`. `routes/systems.php` is required last in `routes/web.php`, so a platform route wins a tie — but a colliding prefix would then be silently dead, which is why it is refused up front instead.
+
+Both `slug` and `prefix` lock together when the system is published: `SaveSystemDraft::update()` ignores submitted values for either, `UpdateSystemRequest::systemPayload()` strips them, and the UI marks both read-only. The shape's `entry` is always derived from the prefix in `SystemShapeBuilder::normalize()`, never read back from storage.
