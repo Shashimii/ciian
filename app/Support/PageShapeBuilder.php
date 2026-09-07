@@ -87,8 +87,35 @@ class PageShapeBuilder
                     ? $blockId
                     : $this->newBlockId(),
                 'component' => strtolower(trim((string) ($block['component'] ?? ''))),
-                'props' => is_array($props) ? $props : [],
+                'props' => $this->normalizeProps(is_array($props) ? $props : []),
             ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * A prop value is a string, or a boolean for a checkbox property.
+     *
+     * Laravel's `ConvertEmptyStringsToNull` middleware turns an empty prop — a
+     * blank `href`, say — into null on the way in, which would then be written
+     * into the generated page as `null` and fail its own type. Everything that
+     * is not a boolean is normalized back to a string here, so the canvas and
+     * the published page agree on what the component receives.
+     *
+     * @param  array<string, mixed>  $props
+     * @return array<string, string|bool>
+     */
+    private function normalizeProps(array $props): array
+    {
+        $normalized = [];
+
+        foreach ($props as $key => $value) {
+            $normalized[(string) $key] = match (true) {
+                is_bool($value) => $value,
+                is_scalar($value) => (string) $value,
+                default => '',
+            };
         }
 
         return $normalized;
