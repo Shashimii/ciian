@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Ciian\Component\ComponentController;
+use App\Http\Controllers\Ciian\Core\DashboardController;
 use App\Http\Controllers\Ciian\Database\TableController;
 use App\Http\Controllers\Ciian\System\PageController;
 use App\Http\Controllers\Ciian\System\SystemController;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('admin')->group(function () {
     Route::middleware(['auth', 'verified'])->group(function () {
-        Route::inertia('dashboard', 'core/dashboard')->name('dashboard');
+        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::middleware('permission:systems.manage')->group(function () {
             Route::get('systems', [SystemController::class, 'index'])->name('systems.index');
