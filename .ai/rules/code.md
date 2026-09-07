@@ -127,3 +127,14 @@ EnsureEmailIsVerified     ❌ (prefer VerifiedEmail if creating new ones)
 A system's slug is its live entry path, so it locks on publish: `SaveSystemDraft::update()` ignores a submitted slug once published (`UpdateSystemRequest::systemPayload()` strips it) and the UI marks the field read-only. Same rule as `tbl_db_name` on a published table — do not unlock it.
 
 Deleting a system is not implemented; `ciian_sys` deliberately has no `can_delete` column.
+
+## Every system owns a starting index page in ciian_sys_pg
+Pages belong to a system, not to the platform: `ciian_sys_pg` (`App\Models\Ciian\System\Page`) with `system_id`, `name`, `slug`, `is_index`, `status`, `unpub_shape`, `pub_shape`, unique on `(system_id, slug)`.
+
+**A system always has exactly one page with `is_index` set.** `SaveSystemDraft::create()` calls `SavePageDraft::createIndex()` inside the same transaction, so a system never exists without an entry point. That page keeps the slug `index` (`Page::INDEX_SLUG`), is served at the system root (`path` `/`, everything else `/{slug}`), and `DeletePage::handle()` refuses it outright. Do not add a code path that deletes it, renames its slug, or creates a system without it. `StorePageRequest`/`UpdatePageRequest` reserve the `index` slug so no ordinary page can claim it.
+
+`PublishPage::handle()` mirrors `PublishSystem`: copy `unpub_shape` → `pub_shape`, set `status=published`, nothing else. A page going live never runs DDL.
+
+`path` is derived from the slug in `PageShapeBuilder::normalize()` every time, never read back from storage, so a stored path cannot drift from the page it describes. A slug locks once the page is published (`SavePageDraft::slugIsLocked()`), and the index page's slug is locked always. When a still-unpublished system's slug changes, `SaveSystemDraft::update()` calls `SavePageDraft::reslugSystem()` so no page shape keeps pointing at the old `pg_sys`.
+
+Pages are managed from the system's own manage page (`/admin/systems/{system}`), not a global admin module — the standalone Layouts module was removed for exactly that reason.
