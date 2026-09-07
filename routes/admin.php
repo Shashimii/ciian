@@ -56,6 +56,7 @@ Route::prefix('admin')->group(function () {
             Route::post('components', [ComponentController::class, 'store'])->name('components.store');
             // Registered after `components/create` so that literal path wins.
             Route::get('components/{component}', [ComponentController::class, 'show'])->name('components.show');
+            Route::delete('components/{component}', [ComponentController::class, 'destroy'])->name('components.destroy');
         });
     });
 });

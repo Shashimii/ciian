@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ciian\Component;
 
+use App\Actions\Component\DeleteComponent;
 use App\Actions\Component\UploadComponent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ciian\Component\UploadComponentRequest;
@@ -67,5 +68,22 @@ class ComponentController extends Controller
         // Stay on the upload page: its preview panel can only render the component
         // once the file exists, so returning here is what makes the preview possible.
         return to_route('components.create', ['uploaded' => $component->slug]);
+    }
+
+    /**
+     * Delete a component: its row and the generated TSX file behind it.
+     */
+    public function destroy(Component $component, DeleteComponent $deleteComponent): RedirectResponse
+    {
+        $name = $component->name;
+
+        $deleteComponent->handle($component);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __(':name deleted.', ['name' => $name]),
+        ]);
+
+        return to_route('components.index');
     }
 }
