@@ -30,9 +30,11 @@
             }
         </style>
 
-        <link rel="icon" href="/favicon.ico" sizes="any">
+        {{-- Only the SVG mark is Ciian's; the .ico and apple-touch-icon that
+             shipped with the starter kit were Laravel's logo and were removed
+             rather than left to brand the app wrongly. Re-add them here if a
+             raster export is produced. --}}
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
         @fonts
 
