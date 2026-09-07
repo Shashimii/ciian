@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import { cn, toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { edit as editCiian } from '@/routes/ciian';
 import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
 import type { NavItem } from '@/types';
@@ -24,6 +25,14 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Appearance',
         href: editAppearance(),
+        icon: null,
+    },
+    // Platform config rather than an account setting. Listed for everyone, the
+    // same way the app sidebar lists Tables and Components: the route itself is
+    // gated by `permission:systems.manage`.
+    {
+        title: 'Ciian',
+        href: editCiian(),
         icon: null,
     },
 ];

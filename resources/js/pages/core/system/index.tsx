@@ -30,6 +30,7 @@ import {
 import { clearFieldErrors } from '@/lib/clear-field-errors';
 import { resolveLucideIcon, TABLE_ICON_OPTIONS } from '@/lib/lucide-icons';
 import { cn } from '@/lib/utils';
+import { edit as editCiian } from '@/routes/ciian';
 import {
     destroy,
     index as systemsIndex,
@@ -37,12 +38,10 @@ import {
     show,
     store,
 } from '@/routes/systems';
-import { update as updateCiian } from '@/routes/systems/ciian';
-import type { CiianConfigData, SystemRow } from '@/types';
+import type { SystemRow } from '@/types';
 
 type Props = {
     systems: SystemRow[];
-    ciianConfig: CiianConfigData;
     tagColors: string[];
 };
 
@@ -174,13 +173,8 @@ function ColorPicker({ colors, selected, onSelect }: ColorPickerProps) {
     );
 }
 
-export default function SystemIndex({
-    systems,
-    ciianConfig,
-    tagColors,
-}: Props) {
+export default function SystemIndex({ systems, tagColors }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
-    const [ciianOpen, setCiianOpen] = useState(false);
     const [publishingKey, setPublishingKey] = useState<string | null>(null);
     const [deletingKey, setDeletingKey] = useState<string | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -191,7 +185,6 @@ export default function SystemIndex({
     const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
 
     const [showCreateIconPicker, setShowCreateIconPicker] = useState(false);
-    const [showCiianIconPicker, setShowCiianIconPicker] = useState(false);
     const [iconTooltipOpen, setIconTooltipOpen] = useState(false);
 
     const createForm = useForm({
@@ -203,15 +196,7 @@ export default function SystemIndex({
         description: '',
     });
 
-    const ciianForm = useForm({
-        name: ciianConfig.name,
-        sys_slug: ciianConfig.sys_slug,
-        icon: ciianConfig.icon,
-        color: ciianConfig.color,
-    });
-
     const selectedCreateIcon = resolveLucideIcon(createForm.data.icon);
-    const selectedCiianIcon = resolveLucideIcon(ciianForm.data.icon);
 
     // Keep the payload while the dialog fades out so its content stays stable.
     useEffect(() => {
@@ -375,31 +360,6 @@ export default function SystemIndex({
         }
     };
 
-    const openCiian = () => {
-        ciianForm.setData({
-            name: ciianConfig.name,
-            sys_slug: ciianConfig.sys_slug,
-            icon: ciianConfig.icon,
-            color: ciianConfig.color,
-        });
-        ciianForm.clearErrors();
-        setShowCiianIconPicker(false);
-        setIconTooltipOpen(false);
-        setCiianOpen(true);
-    };
-
-    const closeCiian = (open: boolean) => {
-        setCiianOpen(open);
-
-        if (!open) {
-            window.setTimeout(() => {
-                setShowCiianIconPicker(false);
-                setIconTooltipOpen(false);
-                ciianForm.clearErrors();
-            }, 200);
-        }
-    };
-
     const submitCreate = (event: FormEvent) => {
         event.preventDefault();
 
@@ -407,20 +367,6 @@ export default function SystemIndex({
             preserveScroll: true,
             invalidateCacheTags: ['systems', 'tables'],
             onSuccess: () => closeCreate(false),
-        });
-    };
-
-    const submitCiian = (event: FormEvent) => {
-        event.preventDefault();
-
-        ciianForm.patch(updateCiian.url(), {
-            preserveScroll: true,
-            invalidateCacheTags: ['systems', 'tables'],
-            onSuccess: () => {
-                // Drop any untagged prefetched pages (e.g. Tables) so badge icon/color refresh.
-                router.flushAll();
-                closeCiian(false);
-            },
         });
     };
 
@@ -530,14 +476,10 @@ export default function SystemIndex({
                     searchPlaceholder="Search systems…"
                     onRowClick={(row) => {
                         // Ciian is the platform, not a created system: it has no
-                        // shape and no manage page, only its config panel.
-                        if (row.kind === 'ciian') {
-                            openCiian();
-
-                            return;
-                        }
-
-                        router.visit(show(row.id));
+                        // shape and no manage page. Its config lives in Settings.
+                        router.visit(
+                            row.kind === 'ciian' ? editCiian() : show(row.id),
+                        );
                     }}
                     onPublish={publishSystem}
                     canPublish={(row) => row.can_publish}
@@ -777,120 +719,6 @@ export default function SystemIndex({
                     </div>
 
                     <InputError message={createForm.errors.icon} />
-                </form>
-            </FormSidebar>
-
-            <FormSidebar
-                open={ciianOpen}
-                onOpenChange={closeCiian}
-                title="Ciian settings"
-                description="Platform configuration from ciian_config."
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => closeCiian(false)}
-                            disabled={ciianForm.processing}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            form="ciian-config-form"
-                            disabled={ciianForm.processing}
-                        >
-                            Save changes
-                        </Button>
-                    </div>
-                }
-            >
-                <form
-                    id="ciian-config-form"
-                    noValidate
-                    className="space-y-4"
-                    onSubmit={submitCiian}
-                >
-                    <div className="flex items-end gap-3">
-                        <div className="order-1 min-w-0 flex-1 space-y-2">
-                            <Label htmlFor="ciian-name">Name</Label>
-                            <Input
-                                id="ciian-name"
-                                value={ciianForm.data.name}
-                                disabled
-                                placeholder="Enter Name"
-                            />
-                            <InputError message={ciianForm.errors.name} />
-                        </div>
-
-                        <Tooltip
-                            open={iconTooltipOpen && ciianOpen}
-                            onOpenChange={setIconTooltipOpen}
-                        >
-                            <TooltipTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="order-2 flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60"
-                                    aria-label="Change icon"
-                                    onPointerEnter={() =>
-                                        setIconTooltipOpen(true)
-                                    }
-                                    onPointerLeave={() =>
-                                        setIconTooltipOpen(false)
-                                    }
-                                    onClick={() =>
-                                        setShowCiianIconPicker(
-                                            (current) => !current,
-                                        )
-                                    }
-                                >
-                                    {selectedCiianIcon && (
-                                        <Icon
-                                            iconNode={selectedCiianIcon}
-                                            className="size-7"
-                                        />
-                                    )}
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Change icon</TooltipContent>
-                        </Tooltip>
-                    </div>
-
-                    <IconPicker
-                        open={showCiianIconPicker}
-                        selected={ciianForm.data.icon}
-                        onSelect={(icon) => {
-                            ciianForm.setData('icon', icon);
-                            clearFieldErrors(ciianForm, 'icon');
-                            setShowCiianIconPicker(false);
-                        }}
-                    />
-
-                    <div className="space-y-2">
-                        <Label htmlFor="ciian-sys-slug">System slug</Label>
-                        <Input
-                            id="ciian-sys-slug"
-                            value={ciianForm.data.sys_slug}
-                            disabled
-                            placeholder="Enter System Slug"
-                        />
-                        <InputError message={ciianForm.errors.sys_slug} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Tag color</Label>
-                        <ColorPicker
-                            colors={tagColors}
-                            selected={ciianForm.data.color}
-                            onSelect={(color) => {
-                                ciianForm.setData('color', color);
-                                clearFieldErrors(ciianForm, 'color');
-                            }}
-                        />
-                        <InputError message={ciianForm.errors.color} />
-                    </div>
-
-                    <InputError message={ciianForm.errors.icon} />
                 </form>
             </FormSidebar>
 

@@ -27,17 +27,10 @@ class SystemController extends Controller
      */
     public function index(SystemIndexPresenter $presenter): Response
     {
-        $config = CiianConfig::query()->firstOrFail();
-
+        // The platform's own config is edited under Settings, so the index only
+        // needs the rows and the palette its create form offers.
         return Inertia::render('core/system/index', [
             'systems' => $presenter->systems(),
-            'ciianConfig' => [
-                'id' => $config->id,
-                'name' => $config->name,
-                'sys_slug' => $config->sys_slug,
-                'icon' => $config->icon,
-                'color' => $config->color,
-            ],
             'tagColors' => TagColors::OPTIONS,
         ]);
     }
@@ -147,6 +140,25 @@ class SystemController extends Controller
     }
 
     /**
+     * Show the platform Ciian config under Settings.
+     */
+    public function editCiianConfig(): Response
+    {
+        $config = CiianConfig::query()->firstOrFail();
+
+        return Inertia::render('core/settings/ciian', [
+            'ciianConfig' => [
+                'id' => $config->id,
+                'name' => $config->name,
+                'sys_slug' => $config->sys_slug,
+                'icon' => $config->icon,
+                'color' => $config->color,
+            ],
+            'tagColors' => TagColors::OPTIONS,
+        ]);
+    }
+
+    /**
      * Update platform Ciian config (name, sys_slug, icon).
      */
     public function updateCiianConfig(UpdateCiianConfigRequest $request): RedirectResponse
@@ -159,6 +171,8 @@ class SystemController extends Controller
             'message' => __('Ciian settings saved.'),
         ]);
 
-        return to_route('systems.index');
+        // Back rather than a fixed route: the form lives under Settings, but the
+        // endpoint is reachable from anywhere the config is editable.
+        return back();
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Ciian\System\SystemController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
@@ -10,7 +11,8 @@ use Illuminate\Support\Facades\Route;
 | Account settings
 |--------------------------------------------------------------------------
 |
-| Profile, security, and appearance for any authenticated user.
+| Profile, security, and appearance for any authenticated user, plus the
+| platform's own Ciian settings, which are permission-gated.
 | Paths resolve to /settings/...
 |
 */
@@ -36,4 +38,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('user-password.update');
 
     Route::inertia('settings/appearance', 'core/settings/appearance')->name('appearance.edit');
+
+    // Platform config, not account settings — the controller stays under
+    // Ciian/System with the rest of the platform config, only the URL lives here.
+    Route::middleware('permission:systems.manage')->group(function () {
+        Route::get('settings/ciian', [SystemController::class, 'editCiianConfig'])
+            ->name('ciian.edit');
+    });
 });
