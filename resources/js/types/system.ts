@@ -83,7 +83,12 @@ export type PlacedBlock = {
     block_id: string;
     /** Component slug, resolved through `block-registry.ts`. */
     component: string;
-    props: Record<string, string>;
+    /**
+     * Values this instance was given. Everything is a string except a checkbox
+     * property, which is stored as a real boolean so the component receives the
+     * type its definition declares.
+     */
+    props: Record<string, string | boolean>;
 };
 
 export type SystemPageDetail = {

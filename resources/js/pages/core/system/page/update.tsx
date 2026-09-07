@@ -61,15 +61,32 @@ function newBlockId(): string {
 }
 
 /**
+ * A definition states every default as a string, but a checkbox property is a
+ * boolean to the component that receives it. Coercing here — rather than in the
+ * renderer, which has no definition to consult — keeps the builder canvas and a
+ * published page passing the component the same thing.
+ */
+function propValue(
+    property: ComponentProperty,
+    stored: string | boolean | undefined,
+): string | boolean {
+    if (property.type === 'checkbox') {
+        return typeof stored === 'boolean' ? stored : stored === 'true';
+    }
+
+    return typeof stored === 'string' ? stored : property.default;
+}
+
+/**
  * A component's declared defaults, which every newly placed block starts from.
  */
 function defaultsFor(
     properties: Record<string, ComponentProperty>,
-): Record<string, string> {
+): Record<string, string | boolean> {
     return Object.fromEntries(
         Object.entries(properties).map(([key, property]) => [
             key,
-            property.default,
+            propValue(property, property.default),
         ]),
     );
 }
@@ -116,7 +133,12 @@ function SortableBlock({
                 !selected && 'hover:border-primary/30',
                 isDragging && 'relative z-10 opacity-60',
             )}
-            onClick={onSelect}
+            onClick={(event) => {
+                // Without stopping here the click reaches the canvas, whose own
+                // handler clears the selection this one just made.
+                event.stopPropagation();
+                onSelect();
+            }}
         >
             {/* Sits above the block so a click selects it here rather than
                 activating whatever the component itself renders. */}
@@ -281,7 +303,7 @@ export default function PageBuilder({ system, page, palette }: Props) {
         }
     };
 
-    const setProp = (key: string, value: string) => {
+    const setProp = (key: string, value: string | boolean) => {
         if (!selected) {
             return;
         }
@@ -496,9 +518,15 @@ export default function PageBuilder({ system, page, palette }: Props) {
                                     {Object.entries(
                                         selectedDefinition.properties,
                                     ).map(([key, property]) => {
+                                        const current = propValue(
+                                            property,
+                                            selected.props[key],
+                                        );
                                         const value =
-                                            selected.props[key] ??
-                                            property.default;
+                                            typeof current === 'string'
+                                                ? current
+                                                : String(current);
+                                        const checked = current === true;
 
                                         return (
                                             <div
@@ -572,23 +600,19 @@ export default function PageBuilder({ system, page, palette }: Props) {
                                                     <div className="flex items-center gap-2">
                                                         <Checkbox
                                                             id={`prop-${key}`}
-                                                            checked={
-                                                                value === 'true'
-                                                            }
+                                                            checked={checked}
                                                             onCheckedChange={(
-                                                                checked,
+                                                                next,
                                                             ) =>
                                                                 setProp(
                                                                     key,
-                                                                    checked ===
-                                                                        true
-                                                                        ? 'true'
-                                                                        : 'false',
+                                                                    next ===
+                                                                        true,
                                                                 )
                                                             }
                                                         />
                                                         <span className="text-xs text-muted-foreground">
-                                                            {value === 'true'
+                                                            {checked
                                                                 ? 'On'
                                                                 : 'Off'}
                                                         </span>
