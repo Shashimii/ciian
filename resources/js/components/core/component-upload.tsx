@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import JsonShapeEditor from '@/components/core/json-shape-editor';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { destructuredProps } from '@/lib/tsx-props';
 import { cn } from '@/lib/utils';
 import { index as componentsIndex, store } from '@/routes/components';
 import type { ComponentRow } from '@/types/component';
@@ -55,29 +56,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function nonEmptyString(value: unknown): boolean {
     return typeof value === 'string' && value.trim() !== '';
-}
-
-/** Prop names the TSX destructures, so they can be matched against `properties`. */
-function destructuredProps(tsx: string): string[] {
-    const start = tsx.indexOf('export default');
-
-    if (start === -1) {
-        return [];
-    }
-
-    const body = tsx.slice(start);
-    const open = body.indexOf('{');
-    const close = body.indexOf('}');
-
-    if (open === -1 || close === -1 || close < open) {
-        return [];
-    }
-
-    return body
-        .slice(open + 1, close)
-        .split(',')
-        .map((part) => part.split('=')[0].trim())
-        .filter((part) => /^[A-Za-z_$][\w$]*$/.test(part));
 }
 
 /**

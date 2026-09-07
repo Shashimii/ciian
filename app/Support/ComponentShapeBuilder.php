@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
@@ -206,7 +205,7 @@ class ComponentShapeBuilder
      */
     private function assertPropertiesMatchSource(array $keys, string $tsx): void
     {
-        $props = $this->destructuredProps($tsx);
+        $props = TsxProps::destructured($tsx);
 
         $missingInSource = array_values(array_diff($keys, $props));
         $missingInProperties = array_values(array_diff($props, $keys));
@@ -222,40 +221,5 @@ class ComponentShapeBuilder
                 'These component props have no matching property: '.implode(', ', $missingInProperties).'.',
             );
         }
-    }
-
-    /**
-     * Prop names the default export destructures.
-     *
-     * @return list<string>
-     */
-    private function destructuredProps(string $tsx): array
-    {
-        $start = strpos($tsx, 'export default');
-
-        if ($start === false) {
-            return [];
-        }
-
-        $body = substr($tsx, $start);
-        $open = strpos($body, '{');
-        $close = strpos($body, '}');
-
-        if ($open === false || $close === false || $close < $open) {
-            return [];
-        }
-
-        $inner = substr($body, $open + 1, $close - $open - 1);
-        $props = [];
-
-        foreach (explode(',', $inner) as $part) {
-            $name = trim(Str::before($part, '='));
-
-            if (preg_match('/^[A-Za-z_$][\w$]*$/', $name) === 1) {
-                $props[] = $name;
-            }
-        }
-
-        return array_values(array_unique($props));
     }
 }
