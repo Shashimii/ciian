@@ -81,6 +81,25 @@ class GeneratePageFile
     }
 
     /**
+     * Remove a system's whole page folder, files and all.
+     *
+     * Used when the system itself is deleted: its pages go with it, so nothing
+     * under `resources/js/pages/{slug}` has a row behind it any more.
+     */
+    public function removeDirectory(System $system): void
+    {
+        $directory = $this->paths->directoryFor($system);
+
+        if (File::isDirectory($directory) && ! File::deleteDirectory($directory)) {
+            throw ValidationException::withMessages([
+                'system' => __('The system was removed, but :path could not be deleted. Remove it manually.', [
+                    'path' => $this->paths->relative($directory),
+                ]),
+            ]);
+        }
+    }
+
+    /**
      * Follow a still-unpublished system's slug to its new folder, so its already
      * generated pages do not strand under the old name.
      */

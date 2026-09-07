@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Ciian\System;
 
+use App\Actions\System\DeleteSystem;
 use App\Actions\System\PublishSystem;
 use App\Actions\System\SaveSystemDraft;
 use App\Http\Controllers\Controller;
@@ -13,6 +14,9 @@ use App\Models\Ciian\System\System as CreatedSystem;
 use App\Support\SystemIndexPresenter;
 use App\Support\TagColors;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -100,6 +104,46 @@ class SystemController extends Controller
         ]);
 
         return back();
+    }
+
+    /**
+     * Delete a system, its pages, and everything generated for it.
+     */
+    public function destroy(
+        Request $request,
+        CreatedSystem $system,
+        DeleteSystem $deleteSystem,
+    ): RedirectResponse {
+        $requiresPassword = $system->isPublished();
+
+        if ($requiresPassword) {
+            $this->verifyRootPassword($request);
+        }
+
+        $deleteSystem->handle($system, $requiresPassword);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('System deleted.'),
+        ]);
+
+        return to_route('systems.index');
+    }
+
+    /**
+     * Require the current user's own password before deleting a system that is
+     * currently published — it is live at its prefix and its pages are being
+     * served. An unpublished draft never needs this.
+     */
+    private function verifyRootPassword(Request $request): void
+    {
+        $password = (string) $request->input('root_password', '');
+
+        if ($password === '' || ! Hash::check($password, (string) $request->user()?->password)) {
+            throw ValidationException::withMessages([
+                'root_password' => __('Incorrect password.'),
+            ]);
+        }
     }
 
     /**

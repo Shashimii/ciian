@@ -71,6 +71,10 @@ class SystemIndexPresenter
             // The slug names the generated page folder and the prefix is the live
             // URL, so both lock together when the system is published.
             'can_edit_slug' => ! $system->isPublished(),
+            'can_delete' => true,
+            // Deleting cascades to pages but never to tables, so a system holding
+            // tables is refused until they are removed from the Tables module.
+            'blocking_tables' => $system->tables_count ?? $system->tables()->count(),
             'tables_count' => $system->tables_count ?? $system->tables()->count(),
             'unpub_shape' => $system->unpub_shape,
         ];
@@ -131,6 +135,9 @@ class SystemIndexPresenter
             'can_publish' => false,
             'is_sync' => false,
             'can_edit_slug' => false,
+            // Ciian is the platform, not a created system: it cannot be deleted.
+            'can_delete' => false,
+            'blocking_tables' => 0,
             'tables_count' => InternalTable::query()
                 ->tagged(InternalTable::TAG_CIIAN)
                 ->count(),

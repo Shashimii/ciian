@@ -32,6 +32,8 @@ Route::prefix('admin')->group(function () {
                 ->name('systems.update');
             Route::post('systems/{system}/publish', [SystemController::class, 'publish'])
                 ->name('systems.publish');
+            Route::delete('systems/{system}', [SystemController::class, 'destroy'])
+                ->name('systems.destroy');
 
             Route::post('systems/{system}/pages', [PageController::class, 'store'])
                 ->name('systems.pages.store');
