@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
     Blocks,
     Boxes,
@@ -7,6 +7,7 @@ import {
     Shield,
     Users,
 } from 'lucide-react';
+import { useMemo } from 'react';
 import AppLogo from '@/components/core/app-logo';
 import { NavMain } from '@/components/core/nav-main';
 import { NavUser } from '@/components/core/nav-user';
@@ -41,18 +42,21 @@ const mainNavGroups: NavGroup[] = [
                 href: systemsIndex(),
                 icon: Boxes,
                 cacheTags: 'systems',
+                permission: 'systems.manage',
             },
             {
                 title: 'Users',
                 href: usersIndex(),
                 icon: Users,
                 cacheTags: 'users',
+                permission: 'users.manage',
             },
             {
                 title: 'Roles',
                 href: rolesIndex(),
                 icon: Shield,
                 cacheTags: 'roles',
+                permission: 'roles.manage',
             },
         ],
     },
@@ -64,6 +68,7 @@ const mainNavGroups: NavGroup[] = [
                 href: componentsIndex(),
                 icon: Blocks,
                 cacheTags: 'components',
+                permission: 'components.manage',
             },
         ],
     },
@@ -75,12 +80,30 @@ const mainNavGroups: NavGroup[] = [
                 href: tablesIndex(),
                 icon: Database,
                 cacheTags: 'tables',
+                permission: 'tables.manage',
             },
         ],
     },
 ];
 
 export function AppSidebar() {
+    const { auth } = usePage().props;
+
+    // Groups whose every item is gated away disappear with their heading,
+    // rather than leaving an empty "Backend" label behind.
+    const visibleGroups = useMemo(() => {
+        const held = new Set(auth?.permissions ?? []);
+
+        return mainNavGroups
+            .map((group) => ({
+                ...group,
+                items: group.items.filter(
+                    (item) => !item.permission || held.has(item.permission),
+                ),
+            }))
+            .filter((group) => group.items.length > 0);
+    }, [auth?.permissions]);
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -96,7 +119,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain groups={mainNavGroups} />
+                <NavMain groups={visibleGroups} />
             </SidebarContent>
 
             <SidebarFooter>

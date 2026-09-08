@@ -1,5 +1,12 @@
-import { Head, Link } from '@inertiajs/react';
-import { Blocks, Boxes, Database, Ghost, Settings2, Sparkles } from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import {
+    Blocks,
+    Boxes,
+    Database,
+    Ghost,
+    Settings2,
+    Sparkles,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Heading from '@/components/core/heading';
 import { Badge } from '@/components/ui/badge';
@@ -29,9 +36,14 @@ type Shortcut = {
     icon: LucideIcon;
     /** Omitted for destinations where a count means nothing. */
     count?: number;
+    /** Permission slug gating the destination, matching its route middleware. */
+    permission: string;
 };
 
 export default function Dashboard({ release, counts }: Props) {
+    const { auth } = usePage().props;
+    const held = new Set(auth?.permissions ?? []);
+
     const shortcuts: Shortcut[] = [
         {
             title: 'Systems',
@@ -39,6 +51,7 @@ export default function Dashboard({ release, counts }: Props) {
             href: systemsIndex().url,
             icon: Boxes,
             count: counts.systems,
+            permission: 'systems.manage',
         },
         {
             title: 'Components',
@@ -46,6 +59,7 @@ export default function Dashboard({ release, counts }: Props) {
             href: componentsIndex().url,
             icon: Blocks,
             count: counts.components,
+            permission: 'components.manage',
         },
         {
             title: 'Tables',
@@ -53,14 +67,17 @@ export default function Dashboard({ release, counts }: Props) {
             href: tablesIndex().url,
             icon: Database,
             count: counts.tables,
+            permission: 'tables.manage',
         },
         {
             title: 'Ciian settings',
             description: 'Platform identity and the main index page.',
             href: editCiian().url,
             icon: Settings2,
+            // Gated on systems.manage, not settings.manage — see routes/settings.php.
+            permission: 'systems.manage',
         },
-    ];
+    ].filter((shortcut) => held.has(shortcut.permission));
 
     return (
         <>
@@ -91,44 +108,48 @@ export default function Dashboard({ release, counts }: Props) {
                     </div>
                 </section>
 
-                <section className="space-y-4">
-                    <Heading
-                        variant="small"
-                        title="Shortcuts"
-                        description="Jump straight into a module."
-                    />
+                {/* An account with no module permissions gets no heading over
+                    an empty grid. */}
+                {shortcuts.length > 0 && (
+                    <section className="space-y-4">
+                        <Heading
+                            variant="small"
+                            title="Shortcuts"
+                            description="Jump straight into a module."
+                        />
 
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {shortcuts.map((shortcut) => (
-                            <Link
-                                key={shortcut.title}
-                                href={shortcut.href}
-                                className="group flex flex-col gap-3 rounded-xl border bg-card/50 p-4 transition-colors hover:border-primary/40 hover:bg-card"
-                            >
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="flex size-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors group-hover:text-foreground">
-                                        <shortcut.icon className="size-4" />
-                                    </span>
-
-                                    {shortcut.count !== undefined && (
-                                        <span className="text-2xl font-semibold tabular-nums">
-                                            {shortcut.count}
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            {shortcuts.map((shortcut) => (
+                                <Link
+                                    key={shortcut.title}
+                                    href={shortcut.href}
+                                    className="group flex flex-col gap-3 rounded-xl border bg-card/50 p-4 transition-colors hover:border-primary/40 hover:bg-card"
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="flex size-9 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors group-hover:text-foreground">
+                                            <shortcut.icon className="size-4" />
                                         </span>
-                                    )}
-                                </div>
 
-                                <div className="min-w-0">
-                                    <div className="text-sm font-medium">
-                                        {shortcut.title}
+                                        {shortcut.count !== undefined && (
+                                            <span className="text-2xl font-semibold tabular-nums">
+                                                {shortcut.count}
+                                            </span>
+                                        )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        {shortcut.description}
-                                    </p>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </section>
+
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-medium">
+                                            {shortcut.title}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {shortcut.description}
+                                        </p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
             </div>
         </>
     );

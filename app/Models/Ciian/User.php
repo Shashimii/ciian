@@ -85,6 +85,28 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Every permission slug this account effectively holds.
+     *
+     * `root` is expanded to the full set here rather than left for the caller
+     * to interpret, so the wildcard rule lives in one place — the frontend only
+     * ever has to ask whether a slug is in the list.
+     *
+     * @return list<string>
+     */
+    public function permissionSlugs(): array
+    {
+        $this->loadMissing('role.permissions');
+
+        $permissions = $this->role->permissions;
+
+        if ($permissions->contains(fn (Permission $permission): bool => $permission->isRoot())) {
+            return array_values(Permission::query()->orderBy('slug')->pluck('slug')->all());
+        }
+
+        return array_values($permissions->pluck('slug')->all());
+    }
+
+    /**
      * Whether this user's role includes the given permission slug.
      *
      * The `root` permission grants every permission.

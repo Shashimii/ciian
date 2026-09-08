@@ -12,6 +12,12 @@ export type NavItem = {
     icon?: LucideIcon | null;
     isActive?: boolean;
     cacheTags?: string | string[];
+    /**
+     * Permission slug the destination is gated on. Omitted means every signed-in
+     * account may reach it. Must match the route's `permission:` middleware —
+     * a mismatch either hides a usable link or shows one that 403s.
+     */
+    permission?: string;
 };
 
 export type NavGroup = {

@@ -13,6 +13,11 @@ export type User = {
 
 export type Auth = {
     user: User;
+    /**
+     * Effective permission slugs, with `root` already expanded server-side —
+     * a plain membership check is enough, never a wildcard rule repeated here.
+     */
+    permissions: string[];
 };
 
 export type Passkey = {
