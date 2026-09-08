@@ -28,14 +28,14 @@ class RoleFactory extends Factory
             'slug' => Str::slug($name),
             'description' => fake()->sentence(),
             'icon' => 'Shield',
-            'locked' => false,
+            'can_delete' => true,
         ];
     }
 
-    public function locked(): static
+    public function undeletable(): static
     {
         return $this->state(fn (array $attributes) => [
-            'locked' => true,
+            'can_delete' => false,
         ]);
     }
 }

@@ -16,12 +16,12 @@ use Illuminate\Support\Carbon;
  * @property string $slug
  * @property string|null $description
  * @property string $icon
- * @property bool $locked
+ * @property bool $can_delete
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Permission> $permissions
  */
-#[Fillable(['name', 'slug', 'description', 'icon', 'locked'])]
+#[Fillable(['name', 'slug', 'description', 'icon', 'can_delete'])]
 class Role extends Model
 {
     /** @use HasFactory<RoleFactory> */
@@ -41,7 +41,7 @@ class Role extends Model
      */
     protected $attributes = [
         'icon' => 'Shield',
-        'locked' => false,
+        'can_delete' => true,
     ];
 
     /**
@@ -50,7 +50,7 @@ class Role extends Model
     protected function casts(): array
     {
         return [
-            'locked' => 'boolean',
+            'can_delete' => 'boolean',
         ];
     }
 
@@ -70,8 +70,8 @@ class Role extends Model
         return $this->slug === self::ROOT;
     }
 
-    public function isLocked(): bool
+    public function canDelete(): bool
     {
-        return $this->locked;
+        return $this->can_delete;
     }
 }

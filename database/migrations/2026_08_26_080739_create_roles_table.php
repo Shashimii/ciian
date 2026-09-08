@@ -11,18 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('roles', function (Blueprint $table) {
+        Schema::create('ciian_roles', function (Blueprint $table) {
             $table->id();
             $table->string('name')->unique();
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->string('icon')->default('Shield');
-            $table->boolean('locked')->default(false)->index();
+            $table->boolean('can_delete')->default(true);
             $table->timestamps();
         });
 
-        Schema::table('users', function (Blueprint $table) {
-            $table->foreign('role_id')->references('id')->on('roles')->restrictOnDelete();
+        Schema::table('ciian_users', function (Blueprint $table) {
+            $table->foreign('role_id')->references('id')->on('ciian_roles')->restrictOnDelete();
         });
     }
 
@@ -31,10 +31,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
+        Schema::table('ciian_users', function (Blueprint $table) {
             $table->dropForeign(['role_id']);
         });
 
-        Schema::dropIfExists('roles');
+        Schema::dropIfExists('ciian_roles');
     }
 };

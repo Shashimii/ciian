@@ -10,7 +10,7 @@ use Illuminate\Database\Seeder;
 class SystemDefaultsSeeder extends Seeder
 {
     /**
-     * Seed platform config, Accounts shapes, permissions, and locked default roles.
+     * Seed platform config, Accounts shapes, permissions, and protected default roles.
      */
     public function run(): void
     {
@@ -61,10 +61,10 @@ class SystemDefaultsSeeder extends Seeder
     }
 
     /**
-     * The locked roles Ciian ships with. This seeder is their only definition —
-     * nothing else in the application creates a role, it only resolves one.
+     * The protected roles Ciian ships with. This seeder is their only definition
+     * — nothing else in the application creates a role, it only resolves one.
      *
-     * @return list<array{name: string, slug: string, description: string, icon: string, locked: bool}>
+     * @return list<array{name: string, slug: string, description: string, icon: string, can_delete: bool}>
      */
     private function defaultRoles(): array
     {
@@ -74,14 +74,14 @@ class SystemDefaultsSeeder extends Seeder
                 'slug' => Role::ROOT,
                 'description' => 'Full access to System. Immutable cannot be altered or deleted.',
                 'icon' => 'Crown',
-                'locked' => true,
+                'can_delete' => false,
             ],
             [
                 'name' => 'User',
                 'slug' => Role::USER,
                 'description' => 'Default role with no privileges. Access is limited to the main index page only.',
                 'icon' => 'User',
-                'locked' => true,
+                'can_delete' => false,
             ],
         ];
     }
@@ -105,7 +105,7 @@ class SystemDefaultsSeeder extends Seeder
             [
                 'name' => 'Manage Roles',
                 'slug' => 'roles.manage',
-                'description' => 'Create roles and assign permissions (except locked system roles).',
+                'description' => 'Create roles and assign permissions (except protected system roles).',
             ],
             [
                 'name' => 'Manage Tables',

@@ -14,11 +14,6 @@ use Illuminate\Database\Seeder;
  * - database/migrations/2026_08_26_080739_create_roles_table.php
  * - database/migrations/2026_08_26_080740_create_permissions_table.php
  * - database/migrations/2026_08_26_080741_create_permission_role_table.php
- * - database/migrations/2026_09_08_013014_prefix_ciian_accounts_tables.php
- *
- * The last of those renames all four onto the `ciian_` prefix every table the
- * platform owns carries, so the shapes below use the prefixed names even though
- * the create migrations still read bare.
  *
  * Foreign keys always use references as `table.column` (e.g. ciian_roles.id).
  */
@@ -174,11 +169,10 @@ class CiianInternalTableSeeder extends Seeder
                     'default' => 'Shield',
                 ],
                 [
-                    'name' => 'locked',
+                    'name' => 'can_delete',
                     'type' => 'boolean',
                     'nullable' => false,
-                    'default' => false,
-                    'indexed' => true,
+                    'default' => true,
                 ],
             ],
             'timestamps' => true,
