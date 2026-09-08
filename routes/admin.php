@@ -24,12 +24,17 @@ Route::prefix('admin')->group(function () {
     Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+        // Platform config, not the System Builder — it answers on a `systems/`
+        // path only because the controller lives there. Registered before the
+        // systems group so this literal path wins over `systems/{system}`.
+        Route::middleware('permission:settings.manage')->group(function () {
+            Route::patch('systems/ciian', [SystemController::class, 'updateCiianConfig'])
+                ->name('systems.ciian.update');
+        });
+
         Route::middleware('permission:systems.manage')->group(function () {
             Route::get('systems', [SystemController::class, 'index'])->name('systems.index');
             Route::post('systems', [SystemController::class, 'store'])->name('systems.store');
-            // Registered before `systems/{system}` so that the literal path wins.
-            Route::patch('systems/ciian', [SystemController::class, 'updateCiianConfig'])
-                ->name('systems.ciian.update');
             Route::get('systems/{system}', [SystemController::class, 'show'])
                 ->name('systems.show');
             Route::patch('systems/{system}', [SystemController::class, 'update'])

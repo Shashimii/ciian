@@ -41,7 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Platform config, not account settings — the controller stays under
     // Ciian/System with the rest of the platform config, only the URL lives here.
-    Route::middleware('permission:systems.manage')->group(function () {
+    Route::middleware('permission:settings.manage')->group(function () {
         Route::get('settings/ciian', [SystemController::class, 'editCiianConfig'])
             ->name('ciian.edit');
     });

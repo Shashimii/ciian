@@ -74,8 +74,7 @@ export default function Dashboard({ release, counts }: Props) {
             description: 'Platform identity and the main index page.',
             href: editCiian().url,
             icon: Settings2,
-            // Gated on systems.manage, not settings.manage — see routes/settings.php.
-            permission: 'systems.manage',
+            permission: 'settings.manage',
         },
     ].filter((shortcut) => held.has(shortcut.permission));
 

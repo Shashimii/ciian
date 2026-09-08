@@ -12,7 +12,7 @@ class UpdateCiianConfigRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasPermission('systems.manage') ?? false;
+        return $this->user()?->hasPermission('settings.manage') ?? false;
     }
 
     /**
