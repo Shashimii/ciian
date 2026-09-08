@@ -3,6 +3,7 @@ import {
     Blocks,
     Boxes,
     Database,
+    KeyRound,
     LayoutGrid,
     Shield,
     Users,
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import { index as componentsIndex } from '@/routes/components';
+import { index as permissionsIndex } from '@/routes/permissions';
 import { index as rolesIndex } from '@/routes/roles';
 import { index as systemsIndex } from '@/routes/systems';
 import { index as tablesIndex } from '@/routes/tables';
@@ -56,6 +58,13 @@ const mainNavGroups: NavGroup[] = [
                 href: rolesIndex(),
                 icon: Shield,
                 cacheTags: 'roles',
+                permission: 'roles.manage',
+            },
+            {
+                title: 'Permissions',
+                href: permissionsIndex(),
+                icon: KeyRound,
+                cacheTags: 'permissions',
                 permission: 'roles.manage',
             },
         ],

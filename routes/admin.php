@@ -3,6 +3,7 @@
 use App\Http\Controllers\Ciian\Component\ComponentController;
 use App\Http\Controllers\Ciian\Core\DashboardController;
 use App\Http\Controllers\Ciian\Database\TableController;
+use App\Http\Controllers\Ciian\PermissionController;
 use App\Http\Controllers\Ciian\RoleController;
 use App\Http\Controllers\Ciian\System\PageController;
 use App\Http\Controllers\Ciian\System\SystemController;
@@ -64,6 +65,10 @@ Route::prefix('admin')->group(function () {
             Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
             Route::patch('roles/{role}', [RoleController::class, 'update'])->name('roles.update');
             Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+
+            // Gated with roles alike: the seeded roles.manage description is
+            // "Create roles and assign permissions", so the two travel together.
+            Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index');
         });
 
         Route::middleware('permission:tables.manage')->group(function () {

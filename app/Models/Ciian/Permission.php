@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, Role> $roles
+ * @property-read int|null $roles_count
  */
 #[Fillable(['name', 'slug', 'description'])]
 class Permission extends Model
