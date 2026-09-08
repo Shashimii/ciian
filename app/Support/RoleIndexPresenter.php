@@ -70,6 +70,9 @@ class RoleIndexPresenter
             // SystemDefaultsSeeder re-syncs Root's permissions on every run, so
             // editing them here would be undone by the next `db:seed`.
             'permissions_locked' => $role->isRoot(),
+            // Its `updateOrCreate` rewrites name, description and icon for every
+            // shipped role, so those are seeder-owned on Root and User alike.
+            'details_locked' => ! $role->canDelete(),
             'user_count' => $userCount,
             // The slug is the role's identity in code — Role::ROOT and
             // Role::USER are matched on it — so it locks once the row exists.

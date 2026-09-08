@@ -65,17 +65,48 @@ class UpdateRoleRequest extends FormRequest
         $validator->after(function (Validator $validator): void {
             $role = $this->target();
 
-            if ($role === null || ! $role->isRoot()) {
+            if ($role === null) {
                 return;
             }
 
-            if ($this->has('permissions')) {
+            if ($role->isRoot() && $this->has('permissions')) {
                 $validator->errors()->add(
                     'permissions',
                     __('Root\'s permissions are managed by the seeder and cannot be changed here.'),
                 );
             }
+
+            $this->guardSeededDetails($validator, $role);
         });
+    }
+
+    /**
+     * A protected role's name, description and icon belong to the seeder.
+     *
+     * `SystemDefaultsSeeder::seedRoles()` calls `updateOrCreate` keyed on the
+     * slug with all three of those fields, so a change made here is rewritten
+     * by the next `db:seed`. Compared rather than refused outright because the
+     * form always submits `name` — only an actual change is rejected.
+     */
+    private function guardSeededDetails(Validator $validator, Role $role): void
+    {
+        if ($role->canDelete()) {
+            return;
+        }
+
+        $message = __('This is a protected platform role. Its details are written by the seeder and cannot be changed here.');
+
+        if ((string) $this->input('name') !== $role->name) {
+            $validator->errors()->add('name', $message);
+        }
+
+        if ((string) $this->input('description', '') !== (string) $role->description) {
+            $validator->errors()->add('description', $message);
+        }
+
+        if ($this->has('icon') && (string) $this->input('icon') !== $role->icon) {
+            $validator->errors()->add('icon', $message);
+        }
     }
 
     /**

@@ -20,6 +20,8 @@ export type RoleRow = {
     permission_ids: number[];
     /** Root's set is owned by the seeder and cannot be edited here. */
     permissions_locked: boolean;
+    /** Name, description and icon are seeder-owned on protected roles. */
+    details_locked: boolean;
     /** Accounts holding this role; non-zero blocks deletion. */
     user_count: number;
     is_root: boolean;

@@ -22,7 +22,7 @@ class DeleteRole
      */
     public function handle(Role $role): void
     {
-        if (! $role->can_delete) {
+        if (! $role->canDelete()) {
             throw ValidationException::withMessages([
                 'role' => __('This is a protected platform role and cannot be deleted.'),
             ]);

@@ -418,6 +418,7 @@ export default function RoleIndex({ roles, permissions }: Props) {
 
     const createIcon = resolveLucideIcon(createForm.data.icon);
     const editIcon = resolveLucideIcon(editForm.data.icon);
+    const detailsLocked = editing?.details_locked ?? false;
 
     return (
         <>
@@ -636,6 +637,7 @@ export default function RoleIndex({ roles, permissions }: Props) {
                             <Input
                                 id="role-edit-name"
                                 value={editForm.data.name}
+                                disabled={detailsLocked}
                                 onChange={(event) => {
                                     editForm.setData(
                                         'name',
@@ -655,8 +657,13 @@ export default function RoleIndex({ roles, permissions }: Props) {
                             <TooltipTrigger asChild>
                                 <button
                                     type="button"
-                                    className="order-2 flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60"
-                                    aria-label="Change icon"
+                                    disabled={detailsLocked}
+                                    className="order-2 flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border disabled:hover:bg-muted/40"
+                                    aria-label={
+                                        detailsLocked
+                                            ? 'Icon is managed by the seeder'
+                                            : 'Change icon'
+                                    }
                                     onPointerEnter={() => setEditIconTip(true)}
                                     onPointerLeave={() => setEditIconTip(false)}
                                     onClick={() =>
@@ -671,11 +678,24 @@ export default function RoleIndex({ roles, permissions }: Props) {
                                     )}
                                 </button>
                             </TooltipTrigger>
-                            <TooltipContent>Change icon</TooltipContent>
+                            <TooltipContent>
+                                {detailsLocked
+                                    ? 'Managed by the seeder'
+                                    : 'Change icon'}
+                            </TooltipContent>
                         </Tooltip>
                     </div>
 
-                    {showEditIcons && (
+                    {detailsLocked && (
+                        <p className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                            This is a protected platform role. Its name,
+                            description and icon are written by
+                            SystemDefaultsSeeder on every run, so changes made
+                            here would be reverted by the next seed.
+                        </p>
+                    )}
+
+                    {!detailsLocked && showEditIcons && (
                         <IconPicker
                             value={editForm.data.icon}
                             onChange={(icon) => {
@@ -706,6 +726,7 @@ export default function RoleIndex({ roles, permissions }: Props) {
                         <Textarea
                             id="role-edit-description"
                             value={editForm.data.description}
+                            disabled={detailsLocked}
                             onChange={(event) => {
                                 editForm.setData(
                                     'description',
