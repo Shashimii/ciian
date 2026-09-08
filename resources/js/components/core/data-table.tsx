@@ -50,8 +50,12 @@ type Props<T> = {
     canDelete?: (row: T) => boolean;
     /** Marks a row undeletable: the delete action becomes a disabled lock icon. */
     isProtected?: (row: T) => boolean;
-    /** Tooltip / aria-label on that lock, named for whatever this table lists. */
-    protectedLabel?: string;
+    /**
+     * Tooltip / aria-label on that lock, named for whatever this table lists.
+     * Pass a function when rows can be protected for different reasons — it is
+     * the only explanation the user gets for a control that does nothing.
+     */
+    protectedLabel?: string | ((row: T) => string);
     /** Row key currently deleting; every row's delete action is disabled and it spins. */
     deletingKey?: string | null;
     onPublish?: (row: T) => void;
@@ -452,7 +456,12 @@ export default function DataTable<T>({
                                                         const label = busy
                                                             ? 'Deleting…'
                                                             : protectedRow
-                                                              ? protectedLabel
+                                                              ? typeof protectedLabel ===
+                                                                'function'
+                                                                  ? protectedLabel(
+                                                                        row,
+                                                                    )
+                                                                  : protectedLabel
                                                               : 'Delete';
 
                                                         return (
