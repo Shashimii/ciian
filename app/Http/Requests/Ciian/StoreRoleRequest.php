@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Ciian;
 
+use App\Models\Ciian\Permission;
 use App\Models\Ciian\Role;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,7 +31,25 @@ class StoreRoleRequest extends FormRequest
             ],
             'description' => ['nullable', 'string', 'max:1000'],
             'icon' => ['sometimes', 'string', 'max:255'],
+            'permissions' => ['sometimes', 'array'],
+            'permissions.*' => ['integer', Rule::exists(Permission::class, 'id')],
         ];
+    }
+
+    /**
+     * Permission ids to attach, deduplicated.
+     *
+     * @return list<int>
+     */
+    public function permissionIds(): array
+    {
+        $ids = $this->validated()['permissions'] ?? [];
+
+        if (! is_array($ids)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     /**
@@ -40,6 +59,7 @@ class StoreRoleRequest extends FormRequest
     {
         return [
             'slug.regex' => __('The slug may only use lowercase letters, numbers and underscores, starting with a letter.'),
+            'permissions.*.exists' => __('One of those permissions no longer exists.'),
         ];
     }
 

@@ -27,15 +27,18 @@ class RoleController extends Controller
     {
         return Inertia::render('core/role/index', [
             'roles' => $presenter->roles(),
+            'permissions' => $presenter->permissions(),
         ]);
     }
 
     /**
-     * Create a role. Permissions are attached separately.
+     * Create a role with the permissions it was given.
      */
     public function store(StoreRoleRequest $request): RedirectResponse
     {
-        Role::create($request->rolePayload());
+        $role = Role::create($request->rolePayload());
+
+        $role->permissions()->sync($request->permissionIds());
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -46,11 +49,18 @@ class RoleController extends Controller
     }
 
     /**
-     * Update a role's details. Its slug is immutable — see UpdateRoleRequest.
+     * Update a role's details and permissions.
+     *
+     * Its slug is immutable, and Root's permissions are refused outright —
+     * both are explained in UpdateRoleRequest.
      */
     public function update(UpdateRoleRequest $request, Role $role): RedirectResponse
     {
         $role->update($request->rolePayload());
+
+        if (! $role->isRoot()) {
+            $role->permissions()->sync($request->permissionIds());
+        }
 
         Inertia::flash('toast', [
             'type' => 'success',

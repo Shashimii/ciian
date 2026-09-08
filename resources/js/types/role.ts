@@ -1,3 +1,12 @@
+export type PermissionOption = {
+    id: number;
+    name: string;
+    slug: string;
+    description: string | null;
+    /** `User::hasPermission` treats this one as a wildcard over every other. */
+    is_root: boolean;
+};
+
 export type RoleRow = {
     key: string;
     id: number;
@@ -8,6 +17,9 @@ export type RoleRow = {
     /** Lucide icon name. */
     icon: string;
     permission_count: number;
+    permission_ids: number[];
+    /** Root's set is owned by the seeder and cannot be edited here. */
+    permissions_locked: boolean;
     /** Accounts holding this role; non-zero blocks deletion. */
     user_count: number;
     is_root: boolean;

@@ -16,6 +16,7 @@ import InputError from '@/components/core/input-error';
 import { ConfirmDialog } from '@/components/core/modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,10 +30,11 @@ import { clearFieldErrors } from '@/lib/clear-field-errors';
 import { resolveLucideIcon, TABLE_ICON_OPTIONS } from '@/lib/lucide-icons';
 import { cn } from '@/lib/utils';
 import { destroy, index as rolesIndex, store, update } from '@/routes/roles';
-import type { RoleRow } from '@/types/role';
+import type { PermissionOption, RoleRow } from '@/types/role';
 
 type Props = {
     roles: RoleRow[];
+    permissions: PermissionOption[];
 };
 
 function slugify(value: string): string {
@@ -84,7 +86,93 @@ function IconPicker({ value, onChange }: IconPickerProps) {
     );
 }
 
-export default function RoleIndex({ roles }: Props) {
+type PermissionChecklistProps = {
+    permissions: PermissionOption[];
+    selected: number[];
+    onChange: (ids: number[]) => void;
+    disabled?: boolean;
+    lockedNote?: string;
+    error?: string;
+};
+
+/** The permission checkboxes, shared by both sheets. */
+function PermissionChecklist({
+    permissions,
+    selected,
+    onChange,
+    disabled = false,
+    lockedNote,
+    error,
+}: PermissionChecklistProps) {
+    const toggle = (id: number) => {
+        onChange(
+            selected.includes(id)
+                ? selected.filter((current) => current !== id)
+                : [...selected, id],
+        );
+    };
+
+    const grantsEverything = permissions.some(
+        (permission) => permission.is_root && selected.includes(permission.id),
+    );
+
+    return (
+        <div className="space-y-2">
+            <Label>Permissions</Label>
+
+            <div className="divide-y rounded-lg border">
+                {permissions.map((permission) => (
+                    <label
+                        key={permission.id}
+                        className={cn(
+                            'flex items-start gap-3 p-3',
+                            disabled
+                                ? 'cursor-not-allowed opacity-60'
+                                : 'cursor-pointer hover:bg-muted/40',
+                        )}
+                    >
+                        <Checkbox
+                            className="mt-0.5"
+                            checked={selected.includes(permission.id)}
+                            disabled={disabled}
+                            onCheckedChange={() => toggle(permission.id)}
+                        />
+                        <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-medium">
+                                    {permission.name}
+                                </span>
+                                <span className="font-mono text-xs text-muted-foreground">
+                                    {permission.slug}
+                                </span>
+                            </span>
+                            {permission.description && (
+                                <span className="block text-xs text-muted-foreground">
+                                    {permission.description}
+                                </span>
+                            )}
+                        </span>
+                    </label>
+                ))}
+            </div>
+
+            {lockedNote && (
+                <p className="text-xs text-muted-foreground">{lockedNote}</p>
+            )}
+
+            {!disabled && grantsEverything && (
+                <p className="text-xs text-destructive">
+                    Root grants every permission, including the ones left
+                    unchecked above.
+                </p>
+            )}
+
+            <InputError message={error} />
+        </div>
+    );
+}
+
+export default function RoleIndex({ roles, permissions }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editing, setEditing] = useState<RoleRow | null>(null);
@@ -101,12 +189,14 @@ export default function RoleIndex({ roles }: Props) {
         slug: '',
         description: '',
         icon: 'Shield',
+        permissions: [] as number[],
     });
 
     const editForm = useForm({
         name: '',
         description: '',
         icon: 'Shield',
+        permissions: [] as number[],
     });
 
     useEffect(() => {
@@ -251,6 +341,7 @@ export default function RoleIndex({ roles }: Props) {
             name: role.name,
             description: role.description ?? '',
             icon: role.icon,
+            permissions: role.permission_ids,
         });
         setShowEditIcons(false);
         setEditOpen(true);
@@ -273,6 +364,15 @@ export default function RoleIndex({ roles }: Props) {
         if (!editing) {
             return;
         }
+
+        // Root's permissions belong to the seeder, and the request refuses the
+        // key outright — so it must not be sent at all, or editing Root's name
+        // would fail validation.
+        const locked = editing.permissions_locked;
+
+        editForm.transform(({ permissions: submitted, ...rest }) =>
+            locked ? rest : { ...rest, permissions: submitted },
+        );
 
         editForm.patch(update.url(editing.id), {
             preserveScroll: true,
@@ -481,6 +581,16 @@ export default function RoleIndex({ roles }: Props) {
                         <InputError message={createForm.errors.description} />
                     </div>
 
+                    <PermissionChecklist
+                        permissions={permissions}
+                        selected={createForm.data.permissions}
+                        onChange={(ids) => {
+                            createForm.setData('permissions', ids);
+                            clearFieldErrors(createForm, 'permissions');
+                        }}
+                        error={createForm.errors.permissions}
+                    />
+
                     <InputError message={createForm.errors.icon} />
                 </form>
             </FormSidebar>
@@ -607,6 +717,22 @@ export default function RoleIndex({ roles }: Props) {
                         />
                         <InputError message={editForm.errors.description} />
                     </div>
+
+                    <PermissionChecklist
+                        permissions={permissions}
+                        selected={editForm.data.permissions}
+                        onChange={(ids) => {
+                            editForm.setData('permissions', ids);
+                            clearFieldErrors(editForm, 'permissions');
+                        }}
+                        disabled={editing?.permissions_locked ?? false}
+                        lockedNote={
+                            editing?.permissions_locked
+                                ? 'Root always holds every permission. Its set is written by the seeder, so it cannot be changed here.'
+                                : undefined
+                        }
+                        error={editForm.errors.permissions}
+                    />
 
                     <InputError message={editForm.errors.icon} />
                 </form>
