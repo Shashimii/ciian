@@ -33,12 +33,9 @@ class UserFactory extends Factory
         return [
             'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
-            'role_id' => Role::query()->where('slug', Role::USER)->value('id')
-                ?? Role::factory()->create([
-                    'name' => 'User',
-                    'slug' => Role::USER,
-                    'locked' => true,
-                ])->id,
+            'role_id' => Role::query()
+                ->where('slug', Role::USER)
+                ->valueOrFail('id'),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),

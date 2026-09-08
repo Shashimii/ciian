@@ -25,15 +25,12 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
-        $userRoleId = Role::query()->firstOrCreate(
-            ['slug' => Role::USER],
-            [
-                'name' => 'User',
-                'description' => 'Default role with no privileges. Access is limited to the main index page only.',
-                'icon' => 'User',
-                'locked' => true,
-            ],
-        )->id;
+        // Roles come from SystemDefaultsSeeder and are never created here.
+        // Minting one against an unseeded database would leave the platform
+        // half-initialised — no permissions, no Root — while looking healthy.
+        $userRoleId = Role::query()
+            ->where('slug', Role::USER)
+            ->valueOrFail('id');
 
         return User::create([
             'username' => $input['username'],

@@ -45,29 +45,45 @@ class SystemDefaultsSeeder extends Seeder
 
     private function seedRoles(): void
     {
-        $root = Role::query()->updateOrCreate(
-            ['slug' => Role::ROOT],
+        foreach ($this->defaultRoles() as $role) {
+            Role::query()->updateOrCreate(
+                ['slug' => $role['slug']],
+                $role,
+            );
+        }
+
+        // Root is the only shipped role that carries permissions.
+        Role::query()
+            ->where('slug', Role::ROOT)
+            ->firstOrFail()
+            ->permissions()
+            ->sync(Permission::query()->where('slug', Permission::ROOT)->pluck('id'));
+    }
+
+    /**
+     * The locked roles Ciian ships with. This seeder is their only definition —
+     * nothing else in the application creates a role, it only resolves one.
+     *
+     * @return list<array{name: string, slug: string, description: string, icon: string, locked: bool}>
+     */
+    private function defaultRoles(): array
+    {
+        return [
             [
                 'name' => 'Root',
+                'slug' => Role::ROOT,
                 'description' => 'Full access to System. Immutable cannot be altered or deleted.',
                 'icon' => 'Crown',
                 'locked' => true,
             ],
-        );
-
-        $root->permissions()->sync(
-            Permission::query()->where('slug', Permission::ROOT)->pluck('id'),
-        );
-
-        Role::query()->updateOrCreate(
-            ['slug' => Role::USER],
             [
                 'name' => 'User',
+                'slug' => Role::USER,
                 'description' => 'Default role with no privileges. Access is limited to the main index page only.',
                 'icon' => 'User',
                 'locked' => true,
             ],
-        );
+        ];
     }
 
     /**
