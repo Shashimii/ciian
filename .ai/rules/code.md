@@ -194,7 +194,9 @@ Published pages render through `resources/js/components/core/block-renderer.tsx`
 Block props are stored as strings, matching how a component definition declares its defaults — **except a `checkbox` property, which is stored as a real boolean** so the component's prop can be typed `boolean` rather than the string `'false'`. That coercion belongs in the builder, which has the definition to consult; `BlockRenderer` has only the placed block, so it hands props to the component untouched and must never guess at their types.
 
 ## Every table Ciian owns carries the ciian_ prefix
-Any physical table the platform owns is named `ciian_*`. That now includes the four Accounts tables — `ciian_users`, `ciian_roles`, `ciian_permissions`, `ciian_permission_role` — renamed off Laravel's bare names by `2026_09_08_013014_prefix_ciian_accounts_tables`.
+Any physical table the platform owns is named `ciian_*`, including the four Accounts tables — `ciian_users`, `ciian_roles`, `ciian_permissions`, `ciian_permission_role`. The create migrations declare those names directly; there is no rename migration, and the bare Laravel names never exist at any point in the migration history.
+
+Role protection uses `can_delete` (boolean, default `true`) like both table stores, not a `locked` flag. The polarity is inverted from the name it replaced: a protected role is `can_delete: false`.
 
 The reason is namespace, not tidiness: table slugs are unique across `ciian_int_tbl` and `ciian_sys_tbl`, so any name the platform occupies is permanently unavailable to the systems built inside Ciian. Prefixing frees `users` / `roles` / `permissions` for them.
 
