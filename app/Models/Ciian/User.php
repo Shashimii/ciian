@@ -38,6 +38,11 @@ class User extends Authenticatable implements PasskeyUser
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
+     * @var string
+     */
+    protected $table = 'ciian_users';
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

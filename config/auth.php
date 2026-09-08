@@ -69,7 +69,7 @@ return [
 
         // 'users' => [
         //     'driver' => 'database',
-        //     'table' => 'users',
+        //     'table' => 'ciian_users',
         // ],
     ],
 

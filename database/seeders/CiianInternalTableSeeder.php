@@ -14,8 +14,13 @@ use Illuminate\Database\Seeder;
  * - database/migrations/2026_08_26_080739_create_roles_table.php
  * - database/migrations/2026_08_26_080740_create_permissions_table.php
  * - database/migrations/2026_08_26_080741_create_permission_role_table.php
+ * - database/migrations/2026_09_08_013014_prefix_ciian_accounts_tables.php
  *
- * Foreign keys always use references as `table.column` (e.g. roles.id).
+ * The last of those renames all four onto the `ciian_` prefix every table the
+ * platform owns carries, so the shapes below use the prefixed names even though
+ * the create migrations still read bare.
+ *
+ * Foreign keys always use references as `table.column` (e.g. ciian_roles.id).
  */
 class CiianInternalTableSeeder extends Seeder
 {
@@ -56,7 +61,7 @@ class CiianInternalTableSeeder extends Seeder
     {
         $shape = [
             'tbl_name' => 'Users',
-            'tbl_db_name' => 'users',
+            'tbl_db_name' => 'ciian_users',
             'tbl_sys' => InternalTable::TAG_CIIAN,
             'columns' => [
                 [
@@ -82,7 +87,7 @@ class CiianInternalTableSeeder extends Seeder
                     'type' => 'foreignId',
                     'nullable' => false,
                     'indexed' => true,
-                    'references' => 'roles.id',
+                    'references' => 'ciian_roles.id',
                     'on_delete' => 'restrict',
                 ],
                 [
@@ -121,7 +126,7 @@ class CiianInternalTableSeeder extends Seeder
 
         return $this->publishedAccountTable(
             name: 'Users',
-            slug: 'users',
+            slug: 'ciian_users',
             icon: 'Users',
             shape: $shape,
         );
@@ -136,7 +141,7 @@ class CiianInternalTableSeeder extends Seeder
     {
         $shape = [
             'tbl_name' => 'Roles',
-            'tbl_db_name' => 'roles',
+            'tbl_db_name' => 'ciian_roles',
             'tbl_sys' => InternalTable::TAG_CIIAN,
             'columns' => [
                 [
@@ -181,7 +186,7 @@ class CiianInternalTableSeeder extends Seeder
 
         return $this->publishedAccountTable(
             name: 'Roles',
-            slug: 'roles',
+            slug: 'ciian_roles',
             icon: 'Shield',
             shape: $shape,
         );
@@ -196,7 +201,7 @@ class CiianInternalTableSeeder extends Seeder
     {
         $shape = [
             'tbl_name' => 'Permissions',
-            'tbl_db_name' => 'permissions',
+            'tbl_db_name' => 'ciian_permissions',
             'tbl_sys' => InternalTable::TAG_CIIAN,
             'columns' => [
                 [
@@ -228,7 +233,7 @@ class CiianInternalTableSeeder extends Seeder
 
         return $this->publishedAccountTable(
             name: 'Permissions',
-            slug: 'permissions',
+            slug: 'ciian_permissions',
             icon: 'KeyRound',
             shape: $shape,
         );
@@ -243,21 +248,21 @@ class CiianInternalTableSeeder extends Seeder
     {
         $shape = [
             'tbl_name' => 'Permission Role',
-            'tbl_db_name' => 'permission_role',
+            'tbl_db_name' => 'ciian_permission_role',
             'tbl_sys' => InternalTable::TAG_CIIAN,
             'columns' => [
                 [
                     'name' => 'permission_id',
                     'type' => 'foreignId',
                     'nullable' => false,
-                    'references' => 'permissions.id',
+                    'references' => 'ciian_permissions.id',
                     'on_delete' => 'cascade',
                 ],
                 [
                     'name' => 'role_id',
                     'type' => 'foreignId',
                     'nullable' => false,
-                    'references' => 'roles.id',
+                    'references' => 'ciian_roles.id',
                     'on_delete' => 'cascade',
                 ],
             ],
@@ -267,7 +272,7 @@ class CiianInternalTableSeeder extends Seeder
 
         return $this->publishedAccountTable(
             name: 'Permission Role',
-            slug: 'permission_role',
+            slug: 'ciian_permission_role',
             icon: 'Link',
             shape: $shape,
         );

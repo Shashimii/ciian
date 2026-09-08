@@ -20,9 +20,9 @@ class EloquentModelPath
      * @var array<string, class-string>
      */
     public const PROTECTED = [
-        'users' => User::class,
-        'roles' => Role::class,
-        'permissions' => Permission::class,
+        'ciian_users' => User::class,
+        'ciian_roles' => Role::class,
+        'ciian_permissions' => Permission::class,
     ];
 
     /**

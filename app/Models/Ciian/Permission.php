@@ -28,11 +28,19 @@ class Permission extends Model
     public const ROOT = 'root';
 
     /**
+     * @var string
+     */
+    protected $table = 'ciian_permissions';
+
+    /**
+     * The pivot table is named explicitly. Eloquent infers it from the two
+     * model class names, which still yields the pre-prefix `permission_role`.
+     *
      * @return BelongsToMany<Role, $this>
      */
     public function roles(): BelongsToMany
     {
-        return $this->belongsToMany(Role::class);
+        return $this->belongsToMany(Role::class, 'ciian_permission_role');
     }
 
     public function isRoot(): bool
