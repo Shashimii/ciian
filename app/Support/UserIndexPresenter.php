@@ -20,9 +20,14 @@ class UserIndexPresenter
         // depends on who is asking and on how many Root accounts are left.
         $actorId = Auth::id();
         $rootRoleId = Role::query()->where('slug', Role::ROOT)->value('id');
+        // Only active Roots keep the platform reachable — a deactivated one
+        // cannot sign in, so it does not count towards the invariant.
         $rootCount = $rootRoleId === null
             ? 0
-            : User::query()->where('role_id', $rootRoleId)->count();
+            : User::query()
+                ->where('role_id', $rootRoleId)
+                ->where('status', User::STATUS_ACTIVE)
+                ->count();
 
         return array_values(
             User::query()
@@ -54,8 +59,13 @@ class UserIndexPresenter
             return __('Your Account');
         }
 
-        if ($rootRoleId !== null && $user->role_id === $rootRoleId && $rootCount <= 1) {
-            return __('Last Root Account');
+        if (
+            $rootRoleId !== null
+            && $user->role_id === $rootRoleId
+            && $user->isActive()
+            && $rootCount <= 1
+        ) {
+            return __('Last Active Root');
         }
 
         return null;
@@ -95,6 +105,8 @@ class UserIndexPresenter
             'id' => $user->id,
             'username' => $user->username,
             'email' => $user->email,
+            'status' => $user->status,
+            'is_active' => $user->isActive(),
             // The role's own icon travels with it so the badge matches whatever
             // the role was given, rather than a name-to-icon guess in the page.
             'role' => [

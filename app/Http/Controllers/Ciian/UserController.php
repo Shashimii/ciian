@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Ciian;
 
 use App\Actions\User\DeleteUser;
+use App\Actions\User\UpdateUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ciian\StoreUserRequest;
 use App\Http\Requests\Ciian\UpdateUserRequest;
@@ -53,9 +54,9 @@ class UserController extends Controller
     /**
      * Update an account's details and role.
      */
-    public function update(UpdateUserRequest $request, User $user): RedirectResponse
+    public function update(UpdateUserRequest $request, User $user, UpdateUser $updateUser): RedirectResponse
     {
-        $user->update($request->userPayload());
+        $updateUser->handle($user, $request->userPayload());
 
         Inertia::flash('toast', [
             'type' => 'success',

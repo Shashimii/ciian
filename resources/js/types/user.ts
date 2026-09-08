@@ -20,6 +20,9 @@ export type UserRow = {
     id: number;
     username: string;
     email: string;
+    status: 'active' | 'inactive';
+    /** A deactivated account keeps its row and role but cannot sign in. */
+    is_active: boolean;
     role: UserRoleBadge;
     /** Preformatted on the server so every client shows the same string. */
     joined: string | null;

@@ -117,6 +117,7 @@ export default function UserIndex({ users, roles }: Props) {
         username: '',
         email: '',
         role_id: '',
+        status: 'active',
     });
 
     useEffect(() => {
@@ -189,6 +190,18 @@ export default function UserIndex({ users, roles }: Props) {
                 cell: (row) => <RoleBadge role={row.role} />,
             },
             {
+                id: 'status',
+                header: 'Status',
+                sortable: true,
+                sortValue: (row) => (row.is_active ? 0 : 1),
+                searchValue: (row) => row.status,
+                cell: (row) => (
+                    <Badge variant={row.is_active ? 'default' : 'secondary'}>
+                        {row.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                ),
+            },
+            {
                 id: 'joined',
                 header: 'Joined',
                 sortable: true,
@@ -232,6 +245,7 @@ export default function UserIndex({ users, roles }: Props) {
             username: user.username,
             email: user.email,
             role_id: String(user.role.id),
+            status: user.status,
         });
         setEditOpen(true);
     };
@@ -531,6 +545,36 @@ export default function UserIndex({ users, roles }: Props) {
                         }}
                         error={editForm.errors.role_id}
                     />
+
+                    <div className="space-y-2">
+                        <Label htmlFor="user-edit-status">Status</Label>
+                        <Select
+                            value={editForm.data.status}
+                            onValueChange={(value) => {
+                                editForm.setData('status', value);
+                                clearFieldErrors(editForm, 'status');
+                            }}
+                        >
+                            <SelectTrigger
+                                id="user-edit-status"
+                                className="w-full"
+                            >
+                                <SelectValue placeholder="Select Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">
+                                    Inactive
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                            {editForm.data.status === 'inactive'
+                                ? 'This account cannot sign in, and any open session ends immediately.'
+                                : 'This account can sign in normally.'}
+                        </p>
+                        <InputError message={editForm.errors.status} />
+                    </div>
                 </form>
             </FormSidebar>
         </>
