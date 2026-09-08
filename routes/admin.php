@@ -3,6 +3,7 @@
 use App\Http\Controllers\Ciian\Component\ComponentController;
 use App\Http\Controllers\Ciian\Core\DashboardController;
 use App\Http\Controllers\Ciian\Database\TableController;
+use App\Http\Controllers\Ciian\RoleController;
 use App\Http\Controllers\Ciian\System\PageController;
 use App\Http\Controllers\Ciian\System\SystemController;
 use App\Http\Controllers\Ciian\UserController;
@@ -56,6 +57,13 @@ Route::prefix('admin')->group(function () {
             Route::post('users', [UserController::class, 'store'])->name('users.store');
             Route::patch('users/{user}', [UserController::class, 'update'])->name('users.update');
             Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        });
+
+        Route::middleware('permission:roles.manage')->group(function () {
+            Route::get('roles', [RoleController::class, 'index'])->name('roles.index');
+            Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
+            Route::patch('roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+            Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
         });
 
         Route::middleware('permission:tables.manage')->group(function () {

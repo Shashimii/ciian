@@ -1,0 +1,71 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Ciian\Role;
+
+/**
+ * Shapes ciian_roles rows for the Roles index.
+ */
+class RoleIndexPresenter
+{
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function roles(): array
+    {
+        return array_values(
+            Role::query()
+                ->withCount(['permissions', 'users'])
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Role $role): array => $this->present($role))
+                ->all(),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function present(Role $role): array
+    {
+        $userCount = (int) ($role->users_count ?? 0);
+        $block = $this->deleteBlockFor($role, $userCount);
+
+        return [
+            'key' => "role-{$role->id}",
+            'id' => $role->id,
+            'name' => $role->name,
+            'slug' => $role->slug,
+            'description' => $role->description,
+            'icon' => $role->icon,
+            'permission_count' => (int) ($role->permissions_count ?? 0),
+            'user_count' => $userCount,
+            // The slug is the role's identity in code — Role::ROOT and
+            // Role::USER are matched on it — so it locks once the row exists.
+            'is_root' => $role->isRoot(),
+            'can_delete' => $block === null,
+            'delete_block' => $block,
+        ];
+    }
+
+    /**
+     * Why this role cannot be deleted, or null when it can.
+     *
+     * The string is the tooltip on the row's disabled lock, so it has to read
+     * as a reason on its own. `App\Actions\Role\DeleteRole` refuses the same
+     * two cases server-side.
+     */
+    private function deleteBlockFor(Role $role, int $userCount): ?string
+    {
+        if (! $role->can_delete) {
+            return __('Protected Role');
+        }
+
+        if ($userCount > 0) {
+            return __('In Use');
+        }
+
+        return null;
+    }
+}
