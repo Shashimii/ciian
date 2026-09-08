@@ -49,7 +49,7 @@ app/Models/Systems/{SystemStudly}/...   # created-system tables (e.g. PayrollSys
 app/Models/Systems/Ciian/...            # Ciian-tag tables created via Tables UI
 ```
 
-Hand-written platform models stay tracked (`App\Models\User`, `App\Models\Ciian\Role`, etc.).
+Hand-written platform models stay tracked (`App\Models\Ciian\User`, `App\Models\Ciian\Role`, etc.).
 
 Do **not** put platform models back in `App\Models\` root.
 
