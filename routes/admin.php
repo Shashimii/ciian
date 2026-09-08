@@ -53,6 +53,7 @@ Route::prefix('admin')->group(function () {
 
         Route::middleware('permission:users.manage')->group(function () {
             Route::get('users', [UserController::class, 'index'])->name('users.index');
+            Route::post('users', [UserController::class, 'store'])->name('users.store');
         });
 
         Route::middleware('permission:tables.manage')->group(function () {

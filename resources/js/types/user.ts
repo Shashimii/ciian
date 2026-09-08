@@ -5,6 +5,15 @@ export type UserRoleBadge = {
     icon: string;
 };
 
+export type RoleOption = {
+    id: number;
+    name: string;
+    slug: string;
+    /** Lucide icon name carried from the role row. */
+    icon: string;
+    description: string | null;
+};
+
 export type UserRow = {
     key: string;
     id: number;

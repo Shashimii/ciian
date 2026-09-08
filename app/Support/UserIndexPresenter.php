@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Ciian\Role;
 use App\Models\Ciian\User;
 
 /**
@@ -20,6 +21,28 @@ class UserIndexPresenter
                 ->orderBy('username')
                 ->get()
                 ->map(fn (User $user): array => $this->present($user))
+                ->all(),
+        );
+    }
+
+    /**
+     * The roles the create form can assign, in the order they are offered.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function roles(): array
+    {
+        return array_values(
+            Role::query()
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Role $role): array => [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'slug' => $role->slug,
+                    'icon' => $role->icon,
+                    'description' => $role->description,
+                ])
                 ->all(),
         );
     }
