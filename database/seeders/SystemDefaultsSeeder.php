@@ -108,6 +108,11 @@ class SystemDefaultsSeeder extends Seeder
                 'description' => 'Create roles and assign permissions (except protected system roles).',
             ],
             [
+                'name' => 'Manage Permissions',
+                'slug' => 'permissions.manage',
+                'description' => 'View the permissions roles can be given. They are defined by the platform and by created systems, not authored by hand.',
+            ],
+            [
                 'name' => 'Manage Tables',
                 'slug' => 'tables.manage',
                 'description' => 'Create, edit, publish, and delete database table shapes.',

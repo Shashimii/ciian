@@ -65,7 +65,7 @@ const mainNavGroups: NavGroup[] = [
                 href: permissionsIndex(),
                 icon: KeyRound,
                 cacheTags: 'permissions',
-                permission: 'roles.manage',
+                permission: 'permissions.manage',
             },
         ],
     },

@@ -65,9 +65,9 @@ Route::prefix('admin')->group(function () {
             Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
             Route::patch('roles/{role}', [RoleController::class, 'update'])->name('roles.update');
             Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+        });
 
-            // Gated with roles alike: the seeded roles.manage description is
-            // "Create roles and assign permissions", so the two travel together.
+        Route::middleware('permission:permissions.manage')->group(function () {
             Route::get('permissions', [PermissionController::class, 'index'])->name('permissions.index');
         });
 
