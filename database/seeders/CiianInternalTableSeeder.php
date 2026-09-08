@@ -86,6 +86,13 @@ class CiianInternalTableSeeder extends Seeder
                     'on_delete' => 'restrict',
                 ],
                 [
+                    'name' => 'status',
+                    'type' => 'string',
+                    'nullable' => false,
+                    'default' => 'active',
+                    'indexed' => true,
+                ],
+                [
                     'name' => 'email_verified_at',
                     'type' => 'timestamp',
                     'nullable' => true,
