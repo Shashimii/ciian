@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Ciian;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ciian\StoreUserRequest;
+use App\Http\Requests\Ciian\UpdateUserRequest;
 use App\Models\Ciian\User;
 use App\Support\UserIndexPresenter;
 use Illuminate\Http\RedirectResponse;
@@ -42,6 +43,21 @@ class UserController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('User Created'),
+        ]);
+
+        return to_route('users.index');
+    }
+
+    /**
+     * Update an account's details and role.
+     */
+    public function update(UpdateUserRequest $request, User $user): RedirectResponse
+    {
+        $user->update($request->userPayload());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('User Updated'),
         ]);
 
         return to_route('users.index');

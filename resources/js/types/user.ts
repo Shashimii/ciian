@@ -1,4 +1,5 @@
 export type UserRoleBadge = {
+    id: number;
     name: string;
     slug: string;
     /** Lucide icon name carried from the role row. */

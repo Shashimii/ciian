@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/select';
 import { clearFieldErrors } from '@/lib/clear-field-errors';
 import { resolveLucideIcon } from '@/lib/lucide-icons';
-import { index as usersIndex, store } from '@/routes/users';
+import { index as usersIndex, store, update } from '@/routes/users';
 import type { RoleOption, UserRow } from '@/types/user';
 
 type Props = {
@@ -47,14 +47,69 @@ function RoleBadge({ role }: { role: UserRow['role'] }) {
     );
 }
 
+type RoleSelectProps = {
+    id: string;
+    roles: RoleOption[];
+    value: string;
+    onChange: (value: string) => void;
+    error?: string;
+};
+
+/** Shared by the create and edit sheets so both offer the same thing. */
+function RoleSelect({ id, roles, value, onChange, error }: RoleSelectProps) {
+    const selected = roles.find((role) => String(role.id) === value);
+
+    return (
+        <div className="space-y-2">
+            <Label htmlFor={id}>Role</Label>
+            <Select value={value} onValueChange={onChange}>
+                <SelectTrigger id={id} className="w-full">
+                    <SelectValue placeholder="Select Role" />
+                </SelectTrigger>
+                <SelectContent>
+                    {roles.map((role) => {
+                        const RoleIcon = resolveLucideIcon(role.icon);
+
+                        return (
+                            <SelectItem key={role.id} value={String(role.id)}>
+                                {RoleIcon && (
+                                    <Icon
+                                        iconNode={RoleIcon}
+                                        className="size-4"
+                                    />
+                                )}
+                                {role.name}
+                            </SelectItem>
+                        );
+                    })}
+                </SelectContent>
+            </Select>
+            {selected?.description && (
+                <p className="text-xs text-muted-foreground">
+                    {selected.description}
+                </p>
+            )}
+            <InputError message={error} />
+        </div>
+    );
+}
+
 export default function UserIndex({ users, roles }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [editing, setEditing] = useState<UserRow | null>(null);
 
     const createForm = useForm({
         username: '',
         email: '',
         password: '',
         password_confirmation: '',
+        role_id: '',
+    });
+
+    const editForm = useForm({
+        username: '',
+        email: '',
         role_id: '',
     });
 
@@ -74,6 +129,17 @@ export default function UserIndex({ users, roles }: Props) {
             resetLayoutProps();
         };
     }, []);
+
+    // Keep the account on screen while the sheet fades out.
+    useEffect(() => {
+        if (editOpen) {
+            return;
+        }
+
+        const timer = setTimeout(() => setEditing(null), 200);
+
+        return () => clearTimeout(timer);
+    }, [editOpen]);
 
     const columns = useMemo<DataTableColumn<UserRow>[]>(
         () => [
@@ -142,9 +208,38 @@ export default function UserIndex({ users, roles }: Props) {
         });
     };
 
-    const selectedRole = roles.find(
-        (role) => String(role.id) === createForm.data.role_id,
-    );
+    const openEdit = (user: UserRow) => {
+        setEditing(user);
+        editForm.clearErrors();
+        editForm.setData({
+            username: user.username,
+            email: user.email,
+            role_id: String(user.role.id),
+        });
+        setEditOpen(true);
+    };
+
+    const closeEdit = (open: boolean) => {
+        setEditOpen(open);
+
+        if (!open) {
+            window.setTimeout(() => editForm.clearErrors(), 200);
+        }
+    };
+
+    const submitEdit = (event: FormEvent) => {
+        event.preventDefault();
+
+        if (!editing) {
+            return;
+        }
+
+        editForm.patch(update.url(editing.id), {
+            preserveScroll: true,
+            invalidateCacheTags: ['users'],
+            onSuccess: () => closeEdit(false),
+        });
+    };
 
     return (
         <>
@@ -157,6 +252,7 @@ export default function UserIndex({ users, roles }: Props) {
                     getRowKey={(row) => row.key}
                     emptyMessage="No users yet."
                     searchPlaceholder="Search users…"
+                    onRowClick={openEdit}
                 />
             </div>
 
@@ -225,48 +321,16 @@ export default function UserIndex({ users, roles }: Props) {
                         <InputError message={createForm.errors.email} />
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="user-role">Role</Label>
-                        <Select
-                            value={createForm.data.role_id}
-                            onValueChange={(value) => {
-                                createForm.setData('role_id', value);
-                                clearFieldErrors(createForm, 'role_id');
-                            }}
-                        >
-                            <SelectTrigger id="user-role" className="w-full">
-                                <SelectValue placeholder="Select Role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {roles.map((role) => {
-                                    const RoleIcon = resolveLucideIcon(
-                                        role.icon,
-                                    );
-
-                                    return (
-                                        <SelectItem
-                                            key={role.id}
-                                            value={String(role.id)}
-                                        >
-                                            {RoleIcon && (
-                                                <Icon
-                                                    iconNode={RoleIcon}
-                                                    className="size-4"
-                                                />
-                                            )}
-                                            {role.name}
-                                        </SelectItem>
-                                    );
-                                })}
-                            </SelectContent>
-                        </Select>
-                        {selectedRole?.description && (
-                            <p className="text-xs text-muted-foreground">
-                                {selectedRole.description}
-                            </p>
-                        )}
-                        <InputError message={createForm.errors.role_id} />
-                    </div>
+                    <RoleSelect
+                        id="user-role"
+                        roles={roles}
+                        value={createForm.data.role_id}
+                        onChange={(value) => {
+                            createForm.setData('role_id', value);
+                            clearFieldErrors(createForm, 'role_id');
+                        }}
+                        error={createForm.errors.role_id}
+                    />
 
                     <div className="space-y-2">
                         <Label htmlFor="user-password">Password</Label>
@@ -311,6 +375,88 @@ export default function UserIndex({ users, roles }: Props) {
                             message={createForm.errors.password_confirmation}
                         />
                     </div>
+                </form>
+            </FormSidebar>
+
+            <FormSidebar
+                open={editOpen}
+                onOpenChange={closeEdit}
+                title="Edit user"
+                description={
+                    editing
+                        ? `Changes apply to ${editing.username} the next time they load a page.`
+                        : undefined
+                }
+                footer={
+                    <div className="flex items-center justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => closeEdit(false)}
+                            disabled={editForm.processing}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            form="user-edit-form"
+                            disabled={editForm.processing}
+                        >
+                            Save changes
+                        </Button>
+                    </div>
+                }
+            >
+                <form
+                    id="user-edit-form"
+                    noValidate
+                    className="space-y-4"
+                    onSubmit={submitEdit}
+                >
+                    <div className="space-y-2">
+                        <Label htmlFor="user-edit-username">Username</Label>
+                        <Input
+                            id="user-edit-username"
+                            value={editForm.data.username}
+                            onChange={(event) => {
+                                editForm.setData(
+                                    'username',
+                                    event.target.value,
+                                );
+                                clearFieldErrors(editForm, 'username');
+                            }}
+                            placeholder="Enter Username"
+                            autoComplete="off"
+                        />
+                        <InputError message={editForm.errors.username} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="user-edit-email">Email</Label>
+                        <Input
+                            id="user-edit-email"
+                            type="email"
+                            value={editForm.data.email}
+                            onChange={(event) => {
+                                editForm.setData('email', event.target.value);
+                                clearFieldErrors(editForm, 'email');
+                            }}
+                            placeholder="Enter Email"
+                            autoComplete="off"
+                        />
+                        <InputError message={editForm.errors.email} />
+                    </div>
+
+                    <RoleSelect
+                        id="user-edit-role"
+                        roles={roles}
+                        value={editForm.data.role_id}
+                        onChange={(value) => {
+                            editForm.setData('role_id', value);
+                            clearFieldErrors(editForm, 'role_id');
+                        }}
+                        error={editForm.errors.role_id}
+                    />
                 </form>
             </FormSidebar>
         </>

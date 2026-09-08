@@ -60,6 +60,7 @@ class UserIndexPresenter
             // The role's own icon travels with it so the badge matches whatever
             // the role was given, rather than a name-to-icon guess in the page.
             'role' => [
+                'id' => $user->role->id,
                 'name' => $user->role->name,
                 'slug' => $user->role->slug,
                 'icon' => $user->role->icon,
