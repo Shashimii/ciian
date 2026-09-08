@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Blocks, Boxes, Database, Settings2, Sparkles } from 'lucide-react';
+import { Blocks, Boxes, Database, Ghost, Settings2, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Heading from '@/components/core/heading';
 import { Badge } from '@/components/ui/badge';
@@ -84,8 +84,9 @@ export default function Dashboard({ release, counts }: Props) {
                                 </Badge>
                             )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                            A no-code platform for building full web systems.
+                        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                            <Ghost className="size-4" />
+                            Skeleton.
                         </p>
                     </div>
                 </section>
