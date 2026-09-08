@@ -37,11 +37,11 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request): RedirectResponse
     {
-        $user = User::create($request->userPayload());
+        User::create($request->userPayload());
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => __(':name created.', ['name' => $user->username]),
+            'message' => __('User Created'),
         ]);
 
         return to_route('users.index');
