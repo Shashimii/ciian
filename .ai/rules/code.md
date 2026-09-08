@@ -192,3 +192,15 @@ A page shape's `blocks` key is the builder's output: an ordered list of `{block_
 Published pages render through `resources/js/components/core/block-renderer.tsx`, not generated imports: `GeneratePageFile` inlines the blocks as a `BLOCKS` const and hands them to `<BlockRenderer />`, which resolves each slug through `block-registry.ts` and lazy-loads it. A slug with no file in the current build renders a "Component not in this build" placeholder — that is a build staleness problem, not missing data. A page with no blocks still falls back to the placeholder landing screen.
 
 Block props are stored as strings, matching how a component definition declares its defaults — **except a `checkbox` property, which is stored as a real boolean** so the component's prop can be typed `boolean` rather than the string `'false'`. That coercion belongs in the builder, which has the definition to consult; `BlockRenderer` has only the placed block, so it hands props to the component untouched and must never guess at their types.
+
+## Every table Ciian owns carries the ciian_ prefix
+Any physical table the platform owns is named `ciian_*`. That now includes the four Accounts tables — `ciian_users`, `ciian_roles`, `ciian_permissions`, `ciian_permission_role` — renamed off Laravel's bare names by `2026_09_08_013014_prefix_ciian_accounts_tables`.
+
+The reason is namespace, not tidiness: table slugs are unique across `ciian_int_tbl` and `ciian_sys_tbl`, so any name the platform occupies is permanently unavailable to the systems built inside Ciian. Prefixing frees `users` / `roles` / `permissions` for them.
+
+Consequences to keep in step when adding or renaming a platform table:
+- The model needs an explicit `protected $table`; the bare Eloquent convention no longer matches.
+- `belongsToMany` infers its pivot from model class names (`permission_role`), never the table, so a prefixed pivot must be passed explicitly — see `Role::permissions()` and `Permission::roles()`.
+- `EloquentModelPath::PROTECTED` is keyed by physical table name. A stale key there stops the Database Engine recognising a hand-written model as protected, and a table publish can overwrite it.
+- `CiianInternalTableSeeder` shapes carry both `slug` and `tbl_db_name` plus `table.column` foreign key references; all must use the prefixed names.
+- Laravel infrastructure (`sessions`, `cache`, `jobs`, `password_reset_tokens`, `passkeys`) stays unprefixed by decision — it is config-driven, never appears in the Tables UI, and does not occupy the slug namespace.
