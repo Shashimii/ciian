@@ -56,7 +56,7 @@ class RoleIndexPresenter
     public function present(Role $role): array
     {
         $userCount = (int) ($role->users_count ?? 0);
-        $block = $this->deleteBlockFor($role, $userCount);
+        $block = $this->deleteBlockFor($role);
 
         return [
             'key' => "role-{$role->id}",
@@ -87,16 +87,15 @@ class RoleIndexPresenter
      *
      * The string is the tooltip on the row's disabled lock, so it has to read
      * as a reason on its own. `App\Actions\Role\DeleteRole` refuses the same
-     * two cases server-side.
+     * case server-side.
+     *
+     * A role accounts still hold is deliberately *not* blocked: the delete
+     * dialog asks where to move them, so it is a step rather than a dead end.
      */
-    private function deleteBlockFor(Role $role, int $userCount): ?string
+    private function deleteBlockFor(Role $role): ?string
     {
-        if (! $role->can_delete) {
+        if (! $role->canDelete()) {
             return __('Protected Role');
-        }
-
-        if ($userCount > 0) {
-            return __('In Use');
         }
 
         return null;

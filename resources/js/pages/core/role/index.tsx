@@ -20,6 +20,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Tooltip,
@@ -179,6 +186,7 @@ export default function RoleIndex({ roles, permissions }: Props) {
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [pendingDelete, setPendingDelete] = useState<RoleRow | null>(null);
     const [deletingKey, setDeletingKey] = useState<string | null>(null);
+    const [reassignTo, setReassignTo] = useState('');
     const [showCreateIcons, setShowCreateIcons] = useState(false);
     const [showEditIcons, setShowEditIcons] = useState(false);
     const [createIconTip, setCreateIconTip] = useState(false);
@@ -232,7 +240,10 @@ export default function RoleIndex({ roles, permissions }: Props) {
             return;
         }
 
-        const timer = setTimeout(() => setPendingDelete(null), 200);
+        const timer = setTimeout(() => {
+            setPendingDelete(null);
+            setReassignTo('');
+        }, 200);
 
         return () => clearTimeout(timer);
     }, [deleteOpen]);
@@ -383,6 +394,7 @@ export default function RoleIndex({ roles, permissions }: Props) {
 
     const requestDelete = (role: RoleRow) => {
         setPendingDelete(role);
+        setReassignTo('');
         setDeleteOpen(true);
     };
 
@@ -399,6 +411,7 @@ export default function RoleIndex({ roles, permissions }: Props) {
         router.delete(destroy.url(role.id), {
             preserveScroll: true,
             invalidateCacheTags: ['roles', 'users'],
+            data: reassignTo === '' ? {} : { reassign_to: reassignTo },
             onStart: () => {
                 setDeletingKey(role.key);
                 toastId = toast.loading(`Deleting ${role.name}…`);
@@ -419,6 +432,10 @@ export default function RoleIndex({ roles, permissions }: Props) {
     const createIcon = resolveLucideIcon(createForm.data.icon);
     const editIcon = resolveLucideIcon(editForm.data.icon);
     const detailsLocked = editing?.details_locked ?? false;
+    const needsReassign = (pendingDelete?.user_count ?? 0) > 0;
+    const reassignOptions = roles.filter(
+        (role) => role.id !== pendingDelete?.id,
+    );
 
     return (
         <>
@@ -445,15 +462,57 @@ export default function RoleIndex({ roles, permissions }: Props) {
                 variant="destructive"
                 title="Delete this role?"
                 description={
-                    // Protected and in-use roles show a disabled lock instead,
-                    // so this only ever opens for a deletable role.
+                    // Protected roles show a disabled lock instead, so this
+                    // only ever opens for a deletable one.
                     pendingDelete
-                        ? `${pendingDelete.name} will be permanently deleted. This cannot be undone.`
+                        ? needsReassign
+                            ? `${pendingDelete.name} is held by ${pendingDelete.user_count} account(s). They must move to another role before it can be deleted.`
+                            : `${pendingDelete.name} will be permanently deleted. This cannot be undone.`
                         : undefined
                 }
-                confirmLabel="Delete"
+                confirmLabel={needsReassign ? 'Move and delete' : 'Delete'}
+                confirmDisabled={needsReassign && reassignTo === ''}
                 onConfirm={confirmDelete}
-            />
+            >
+                {needsReassign && (
+                    <div className="space-y-2 text-left">
+                        <Label htmlFor="role-reassign">Move accounts to</Label>
+                        <Select
+                            value={reassignTo}
+                            onValueChange={setReassignTo}
+                        >
+                            <SelectTrigger
+                                id="role-reassign"
+                                className="w-full"
+                            >
+                                <SelectValue placeholder="Select Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {reassignOptions.map((role) => {
+                                    const OptionIcon = resolveLucideIcon(
+                                        role.icon,
+                                    );
+
+                                    return (
+                                        <SelectItem
+                                            key={role.id}
+                                            value={String(role.id)}
+                                        >
+                                            {OptionIcon && (
+                                                <Icon
+                                                    iconNode={OptionIcon}
+                                                    className="size-4"
+                                                />
+                                            )}
+                                            {role.name}
+                                        </SelectItem>
+                                    );
+                                })}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
+            </ConfirmDialog>
 
             <FormSidebar
                 open={createOpen}

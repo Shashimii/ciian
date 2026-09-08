@@ -9,6 +9,8 @@ use App\Http\Requests\Ciian\UpdateRoleRequest;
 use App\Models\Ciian\Role;
 use App\Support\RoleIndexPresenter;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -71,11 +73,12 @@ class RoleController extends Controller
     }
 
     /**
-     * Delete a role. The refusals live in the action, not here.
+     * Delete a role, optionally moving the accounts holding it to another one.
+     * The refusals live in the action, not here.
      */
-    public function destroy(Role $role, DeleteRole $deleteRole): RedirectResponse
+    public function destroy(Request $request, Role $role, DeleteRole $deleteRole): RedirectResponse
     {
-        $deleteRole->handle($role);
+        $deleteRole->handle($role, $this->reassignTarget($request));
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -83,5 +86,27 @@ class RoleController extends Controller
         ]);
 
         return to_route('roles.index');
+    }
+
+    /**
+     * The role the delete dialog asked to move accounts to, if it named one.
+     */
+    private function reassignTarget(Request $request): ?Role
+    {
+        $target = $request->input('reassign_to');
+
+        if ($target === null || $target === '') {
+            return null;
+        }
+
+        $role = Role::query()->find((int) $target);
+
+        if ($role === null) {
+            throw ValidationException::withMessages([
+                'reassign_to' => __('That role no longer exists.'),
+            ]);
+        }
+
+        return $role;
     }
 }

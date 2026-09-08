@@ -125,6 +125,8 @@ type ConfirmDialogProps = {
     cancelLabel?: string;
     onConfirm: () => void;
     processing?: boolean;
+    /** Blocks confirming while the body still needs an answer. */
+    confirmDisabled?: boolean;
     children?: ReactNode;
 };
 
@@ -139,6 +141,7 @@ export function ConfirmDialog({
     cancelLabel = 'Cancel',
     onConfirm,
     processing = false,
+    confirmDisabled = false,
     children,
 }: ConfirmDialogProps) {
     return (
@@ -169,7 +172,7 @@ export function ConfirmDialog({
                         }
                         size="lg"
                         className="flex-1"
-                        disabled={processing}
+                        disabled={processing || confirmDisabled}
                         onClick={onConfirm}
                     >
                         {confirmLabel}
