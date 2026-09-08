@@ -6,7 +6,7 @@ use App\Models\Ciian\Database\InternalTable;
 use App\Models\Ciian\Permission;
 use App\Models\Ciian\Role;
 use App\Models\Ciian\System\SystemTable;
-use App\Models\User;
+use App\Models\Ciian\User;
 use Illuminate\Support\Str;
 
 /**

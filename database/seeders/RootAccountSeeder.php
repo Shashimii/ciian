@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Ciian\Role;
-use App\Models\User;
+use App\Models\Ciian\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 

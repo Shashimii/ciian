@@ -1,11 +1,9 @@
 <?php
 
-namespace App\Models;
+namespace App\Models\Ciian;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Models\Ciian\Permission;
-use App\Models\Ciian\Role;
-use Database\Factories\UserFactory;
+use Database\Factories\Ciian\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
