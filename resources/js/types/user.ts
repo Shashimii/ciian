@@ -25,4 +25,7 @@ export type UserRow = {
     joined: string | null;
     /** Unix seconds, used for sorting rather than display. */
     joined_at: number | null;
+    can_delete: boolean;
+    /** Why deletion is refused, shown on the disabled lock. Null when allowed. */
+    delete_block: string | null;
 };

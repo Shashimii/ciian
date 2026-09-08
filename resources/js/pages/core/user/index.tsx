@@ -1,16 +1,19 @@
 import {
     Head,
     resetLayoutProps,
+    router,
     setLayoutProps,
     useForm,
 } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import DataTable from '@/components/core/data-table';
 import type { DataTableColumn } from '@/components/core/data-table';
 import FormSidebar from '@/components/core/form-sidebar';
 import InputError from '@/components/core/input-error';
+import { ConfirmDialog } from '@/components/core/modal';
 import PasswordInput from '@/components/core/password-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,7 +29,7 @@ import {
 } from '@/components/ui/select';
 import { clearFieldErrors } from '@/lib/clear-field-errors';
 import { resolveLucideIcon } from '@/lib/lucide-icons';
-import { index as usersIndex, store, update } from '@/routes/users';
+import { destroy, index as usersIndex, store, update } from '@/routes/users';
 import type { RoleOption, UserRow } from '@/types/user';
 
 type Props = {
@@ -98,6 +101,9 @@ export default function UserIndex({ users, roles }: Props) {
     const [createOpen, setCreateOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editing, setEditing] = useState<UserRow | null>(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<UserRow | null>(null);
+    const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
     const createForm = useForm({
         username: '',
@@ -140,6 +146,17 @@ export default function UserIndex({ users, roles }: Props) {
 
         return () => clearTimeout(timer);
     }, [editOpen]);
+
+    // Keep the payload while the dialog fades out so its content stays stable.
+    useEffect(() => {
+        if (deleteOpen) {
+            return;
+        }
+
+        const timer = setTimeout(() => setPendingDelete(null), 200);
+
+        return () => clearTimeout(timer);
+    }, [deleteOpen]);
 
     const columns = useMemo<DataTableColumn<UserRow>[]>(
         () => [
@@ -241,6 +258,43 @@ export default function UserIndex({ users, roles }: Props) {
         });
     };
 
+    const requestDelete = (user: UserRow) => {
+        setPendingDelete(user);
+        setDeleteOpen(true);
+    };
+
+    const confirmDelete = () => {
+        setDeleteOpen(false);
+
+        if (!pendingDelete) {
+            return;
+        }
+
+        const user = pendingDelete;
+        let toastId: string | number | undefined;
+
+        router.delete(destroy.url(user.id), {
+            preserveScroll: true,
+            invalidateCacheTags: ['users'],
+            onStart: () => {
+                setDeletingKey(user.key);
+                toastId = toast.loading(`Deleting ${user.username}…`);
+            },
+            // The action refuses some accounts outright, so a failure here
+            // carries a real reason from the server worth showing.
+            onError: (errors) => {
+                toast.error(
+                    errors.user ??
+                        'The account could not be deleted. No reason was returned.',
+                );
+            },
+            onFinish: () => {
+                setDeletingKey(null);
+                toast.dismiss(toastId);
+            },
+        });
+    };
+
     return (
         <>
             <Head title="Users" />
@@ -253,8 +307,28 @@ export default function UserIndex({ users, roles }: Props) {
                     emptyMessage="No users yet."
                     searchPlaceholder="Search users…"
                     onRowClick={openEdit}
+                    onDelete={requestDelete}
+                    isProtected={(row) => !row.can_delete}
+                    protectedLabel={(row) => row.delete_block ?? 'Protected'}
+                    deletingKey={deletingKey}
                 />
             </div>
+
+            <ConfirmDialog
+                open={deleteOpen}
+                onOpenChange={setDeleteOpen}
+                variant="destructive"
+                title="Delete this account?"
+                description={
+                    // Protected rows show a disabled lock instead of a delete
+                    // action, so this only ever opens for a deletable account.
+                    pendingDelete
+                        ? `${pendingDelete.username} will be permanently deleted and signed out everywhere. This cannot be undone.`
+                        : undefined
+                }
+                confirmLabel="Delete"
+                onConfirm={confirmDelete}
+            />
 
             <FormSidebar
                 open={createOpen}

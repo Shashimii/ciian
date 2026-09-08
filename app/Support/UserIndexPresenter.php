@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Ciian\Role;
 use App\Models\Ciian\User;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * Shapes ciian_users rows for the Users index.
@@ -15,14 +16,49 @@ class UserIndexPresenter
      */
     public function users(): array
     {
+        // Resolved once rather than per row: whether an account can be deleted
+        // depends on who is asking and on how many Root accounts are left.
+        $actorId = Auth::id();
+        $rootRoleId = Role::query()->where('slug', Role::ROOT)->value('id');
+        $rootCount = $rootRoleId === null
+            ? 0
+            : User::query()->where('role_id', $rootRoleId)->count();
+
         return array_values(
             User::query()
                 ->with('role')
                 ->orderBy('username')
                 ->get()
-                ->map(fn (User $user): array => $this->present($user))
+                ->map(fn (User $user): array => $this->present(
+                    $user,
+                    $this->deleteBlockFor($user, $actorId, $rootRoleId, $rootCount),
+                ))
                 ->all(),
         );
+    }
+
+    /**
+     * Why this account cannot be deleted, or null when it can.
+     *
+     * The string is the tooltip on the row's disabled lock, so it has to read
+     * as a reason on its own — it is the only explanation the user gets.
+     * `App\Actions\User\DeleteUser` refuses the same two cases server-side.
+     */
+    private function deleteBlockFor(
+        User $user,
+        int|string|null $actorId,
+        ?int $rootRoleId,
+        int $rootCount,
+    ): ?string {
+        if ($actorId !== null && (int) $actorId === $user->id) {
+            return __('Your Account');
+        }
+
+        if ($rootRoleId !== null && $user->role_id === $rootRoleId && $rootCount <= 1) {
+            return __('Last Root Account');
+        }
+
+        return null;
     }
 
     /**
@@ -50,9 +86,11 @@ class UserIndexPresenter
     /**
      * @return array<string, mixed>
      */
-    public function present(User $user): array
+    public function present(User $user, ?string $deleteBlock = null): array
     {
         return [
+            'can_delete' => $deleteBlock === null,
+            'delete_block' => $deleteBlock,
             'key' => "user-{$user->id}",
             'id' => $user->id,
             'username' => $user->username,

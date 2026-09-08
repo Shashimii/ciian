@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Ciian;
 
+use App\Actions\User\DeleteUser;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Ciian\StoreUserRequest;
 use App\Http\Requests\Ciian\UpdateUserRequest;
 use App\Models\Ciian\User;
 use App\Support\UserIndexPresenter;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -58,6 +60,21 @@ class UserController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => __('User Updated'),
+        ]);
+
+        return to_route('users.index');
+    }
+
+    /**
+     * Delete an account. The refusals live in the action, not here.
+     */
+    public function destroy(Request $request, User $user, DeleteUser $deleteUser): RedirectResponse
+    {
+        $deleteUser->handle($user, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => __('User Deleted'),
         ]);
 
         return to_route('users.index');
