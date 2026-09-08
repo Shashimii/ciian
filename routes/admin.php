@@ -5,6 +5,7 @@ use App\Http\Controllers\Ciian\Core\DashboardController;
 use App\Http\Controllers\Ciian\Database\TableController;
 use App\Http\Controllers\Ciian\System\PageController;
 use App\Http\Controllers\Ciian\System\SystemController;
+use App\Http\Controllers\Ciian\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -48,6 +49,10 @@ Route::prefix('admin')->group(function () {
                 ->name('systems.pages.publish');
             Route::delete('systems/{system}/pages/{page}', [PageController::class, 'destroy'])
                 ->name('systems.pages.destroy');
+        });
+
+        Route::middleware('permission:users.manage')->group(function () {
+            Route::get('users', [UserController::class, 'index'])->name('users.index');
         });
 
         Route::middleware('permission:tables.manage')->group(function () {
