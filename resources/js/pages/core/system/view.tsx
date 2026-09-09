@@ -6,14 +6,23 @@ import {
     setLayoutProps,
     useForm,
 } from '@inertiajs/react';
-import { Loader2, Pencil, Plus, RefreshCw, Upload } from 'lucide-react';
+import {
+    Loader2,
+    Pencil,
+    Plus,
+    RefreshCw,
+    SquareArrowOutUpRight,
+    Upload,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { FormEvent } from 'react';
 import { toast } from 'sonner';
+import ColorPicker from '@/components/core/color-picker';
 import DataTable from '@/components/core/data-table';
 import type { DataTableColumn } from '@/components/core/data-table';
 import FormSidebar from '@/components/core/form-sidebar';
 import Heading from '@/components/core/heading';
+import IconPicker from '@/components/core/icon-picker';
 import InputError from '@/components/core/input-error';
 import { ConfirmDialog, Modal } from '@/components/core/modal';
 import { Badge } from '@/components/ui/badge';
@@ -28,8 +37,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { clearFieldErrors } from '@/lib/clear-field-errors';
-import { resolveLucideIcon, TABLE_ICON_OPTIONS } from '@/lib/lucide-icons';
-import { cn } from '@/lib/utils';
+import { resolveLucideIcon } from '@/lib/lucide-icons';
 import { index as systemsIndex, publish, show, update } from '@/routes/systems';
 import {
     destroy as destroyPage,
@@ -38,7 +46,7 @@ import {
     store as storePage,
     update as updatePage,
 } from '@/routes/systems/pages';
-import { index as tablesIndex } from '@/routes/tables';
+import { create as createTable } from '@/routes/tables';
 import type { SystemPageRow, SystemRow } from '@/types';
 
 type Props = {
@@ -65,49 +73,6 @@ function prefixify(value: string): string {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
-}
-
-const COLOR_SWATCHES: Record<string, string> = {
-    violet: 'bg-violet-500',
-    purple: 'bg-purple-500',
-    fuchsia: 'bg-fuchsia-500',
-    pink: 'bg-pink-500',
-    rose: 'bg-rose-500',
-    red: 'bg-red-500',
-    orange: 'bg-orange-500',
-    amber: 'bg-amber-500',
-    yellow: 'bg-yellow-500',
-    lime: 'bg-lime-500',
-    green: 'bg-green-500',
-    emerald: 'bg-emerald-500',
-    teal: 'bg-teal-500',
-    cyan: 'bg-cyan-500',
-    sky: 'bg-sky-500',
-    blue: 'bg-blue-500',
-    indigo: 'bg-indigo-500',
-};
-
-type SectionProps = {
-    title: string;
-    description?: string;
-    action?: ReactNode;
-    children: ReactNode;
-};
-
-function Section({ title, description, action, children }: SectionProps) {
-    return (
-        <section className="space-y-4">
-            <div className="flex items-start justify-between gap-3">
-                <Heading
-                    variant="small"
-                    title={title}
-                    description={description}
-                />
-                {action}
-            </div>
-            {children}
-        </section>
-    );
 }
 
 export default function SystemView({ system, pages, tagColors }: Props) {
@@ -212,6 +177,11 @@ export default function SystemView({ system, pages, tagColors }: Props) {
         setLayoutProps({
             headerActions: (
                 <div className="flex items-center gap-2">
+                    <span className="mr-2 text-sm text-muted-foreground">
+                        {system.has_pending_changes
+                            ? 'Pending changes'
+                            : 'No pending changes'}
+                    </span>
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <span className="inline-flex">
@@ -240,6 +210,20 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                 : 'No pending changes to publish'}
                         </TooltipContent>
                     </Tooltip>
+
+                    {/* Only a published system answers at its entry path. */}
+                    {system.status === 'published' && system.entry && (
+                        <Button variant="outline" asChild>
+                            <a
+                                href={system.entry}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <SquareArrowOutUpRight className="size-4" />
+                                Visit
+                            </a>
+                        </Button>
+                    )}
                 </div>
             ),
         });
@@ -248,7 +232,15 @@ export default function SystemView({ system, pages, tagColors }: Props) {
             resetLayoutProps();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [system.can_publish, system.is_sync, system.name, publishing]);
+    }, [
+        system.can_publish,
+        system.entry,
+        system.has_pending_changes,
+        system.is_sync,
+        system.name,
+        system.status,
+        publishing,
+    ]);
 
     const submitSettings = (event: FormEvent) => {
         event.preventDefault();
@@ -474,54 +466,93 @@ export default function SystemView({ system, pages, tagColors }: Props) {
         <>
             <Head title={system.name} />
 
-            <div className="grid gap-10 px-4 py-6 lg:grid-cols-3 lg:gap-12">
-                <div className="lg:col-span-2">
-                    <Section
-                        title="Settings"
-                        description={
-                            system.status === 'published'
-                                ? 'Saved to the draft. Sync to apply the changes to the live system.'
-                                : 'Saved to the draft until the system is published.'
-                        }
-                    >
+            {/* Wide screens put the pages and tables beside the settings
+                instead of below them; the form keeps its create-page width. */}
+            <div className="px-4 py-6">
+                <div className="grid gap-10 xl:grid-cols-[minmax(0,42rem)_minmax(0,1fr)] xl:gap-12">
+                    <div className="space-y-10">
+                        <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-3">
+                                <h2 className="text-xl font-semibold tracking-tight">
+                                    {system.name}
+                                </h2>
+                                <Badge
+                                    variant={
+                                        system.status === 'published'
+                                            ? 'default'
+                                            : 'secondary'
+                                    }
+                                >
+                                    {system.status === 'published'
+                                        ? 'Published'
+                                        : 'Unpublished'}
+                                </Badge>
+                            </div>
+                            {system.description && (
+                                <p className="text-sm text-muted-foreground">
+                                    {system.description}
+                                </p>
+                            )}
+                        </div>
+
                         <form
                             noValidate
-                            className="space-y-4"
+                            className="space-y-6"
                             onSubmit={submitSettings}
                         >
-                            <div className="flex items-end gap-3">
-                                <div className="order-1 min-w-0 flex-1 space-y-2">
-                                    <Label htmlFor="system-name">Name</Label>
-                                    <Input
-                                        id="system-name"
-                                        value={form.data.name}
-                                        onChange={(event) => {
-                                            const name = event.target.value;
-                                            form.setData('name', name);
+                            {/* The icon box stands beside both fields rather than
+                            only the name, so it stretches to their height. */}
+                            <div className="flex items-stretch gap-3">
+                                <div className="order-2 grid min-w-0 flex-1 gap-4">
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="system-name">
+                                            Name
+                                        </Label>
+                                        <Input
+                                            id="system-name"
+                                            value={form.data.name}
+                                            placeholder="Enter System Name"
+                                            onChange={(event) => {
+                                                const name = event.target.value;
 
-                                            // Slug and prefix are still free to
-                                            // follow the name until publish.
-                                            if (system.can_edit_slug) {
-                                                form.setData(
+                                                form.setData('name', name);
+
+                                                // The slug follows the name until
+                                                // publishing freezes it.
+                                                if (system.can_edit_slug) {
+                                                    form.setData(
+                                                        'slug',
+                                                        slugify(name),
+                                                    );
+                                                }
+
+                                                clearFieldErrors(
+                                                    form,
+                                                    'name',
                                                     'slug',
-                                                    slugify(name),
                                                 );
-                                                form.setData(
-                                                    'prefix',
-                                                    prefixify(name),
-                                                );
-                                            }
+                                            }}
+                                        />
+                                        <InputError
+                                            message={form.errors.name}
+                                        />
+                                    </div>
 
-                                            clearFieldErrors(
-                                                form,
-                                                'name',
-                                                'slug',
-                                                'prefix',
-                                            );
-                                        }}
-                                        placeholder="Enter System Name"
-                                    />
-                                    <InputError message={form.errors.name} />
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="system-slug">
+                                            Slug
+                                        </Label>
+                                        <Input
+                                            id="system-slug"
+                                            value={form.data.slug}
+                                            placeholder="System Slug"
+                                            readOnly
+                                            disabled
+                                        />
+                                        <InputError
+                                            message={form.errors.slug}
+                                        />
+                                    </div>
                                 </div>
 
                                 <Tooltip
@@ -531,7 +562,7 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                     <TooltipTrigger asChild>
                                         <button
                                             type="button"
-                                            className="order-2 flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60"
+                                            className="order-1 flex size-40 shrink-0 items-center justify-center self-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60"
                                             aria-label="Change icon"
                                             onPointerEnter={() =>
                                                 setIconTooltipOpen(true)
@@ -548,7 +579,7 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                             {selectedIcon && (
                                                 <Icon
                                                     iconNode={selectedIcon}
-                                                    className="size-7"
+                                                    className="size-20"
                                                 />
                                             )}
                                         </button>
@@ -557,161 +588,58 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                 </Tooltip>
                             </div>
 
-                            {showIconPicker && (
-                                <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-12">
-                                    {TABLE_ICON_OPTIONS.map((iconName) => {
-                                        const IconComponent =
-                                            resolveLucideIcon(iconName);
+                            <IconPicker
+                                open={showIconPicker}
+                                selected={form.data.icon}
+                                onSelect={(icon) => {
+                                    form.setData('icon', icon);
+                                    clearFieldErrors(form, 'icon');
+                                    setShowIconPicker(false);
+                                }}
+                            />
 
-                                        return (
-                                            <Tooltip key={iconName}>
-                                                <TooltipTrigger asChild>
-                                                    <button
-                                                        type="button"
-                                                        aria-label={iconName}
-                                                        className={cn(
-                                                            'flex h-10 items-center justify-center rounded-md border',
-                                                            form.data.icon ===
-                                                                iconName &&
-                                                                'border-primary bg-primary/10 text-primary',
-                                                        )}
-                                                        onClick={() => {
-                                                            form.setData(
-                                                                'icon',
-                                                                iconName,
-                                                            );
-                                                            clearFieldErrors(
-                                                                form,
-                                                                'icon',
-                                                            );
-                                                            setShowIconPicker(
-                                                                false,
-                                                            );
-                                                        }}
-                                                    >
-                                                        {IconComponent && (
-                                                            <Icon
-                                                                iconNode={
-                                                                    IconComponent
-                                                                }
-                                                                className="size-4"
-                                                            />
-                                                        )}
-                                                    </button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    {iconName}
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            <div className="space-y-2">
-                                <Label htmlFor="system-slug">Slug</Label>
-                                <Input
-                                    id="system-slug"
-                                    value={form.data.slug}
-                                    readOnly
-                                    disabled={!system.can_edit_slug}
-                                    placeholder="Enter System Slug"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    {system.can_edit_slug
-                                        ? 'Identifies the system internally and names its page folder. Follows the name until published.'
-                                        : 'Locked — the generated page folder is named after it.'}
-                                </p>
-                                <InputError message={form.errors.slug} />
-                            </div>
-
-                            <div className="space-y-2">
+                            <div className="grid gap-2">
                                 <Label htmlFor="system-prefix">
                                     URL prefix
                                 </Label>
                                 <Input
                                     id="system-prefix"
                                     value={form.data.prefix}
+                                    placeholder="Enter URL Prefix"
                                     readOnly={!system.can_edit_slug}
                                     disabled={!system.can_edit_slug}
                                     onChange={(event) => {
                                         form.setData(
                                             'prefix',
-                                            event.target.value,
+                                            prefixify(event.target.value),
                                         );
                                         clearFieldErrors(form, 'prefix');
                                     }}
-                                    placeholder="Enter URL Prefix"
                                 />
-                                <p className="text-xs text-muted-foreground">
-                                    {system.can_edit_slug ? (
-                                        <>
-                                            The system is served from{' '}
-                                            <span className="font-mono">
-                                                /{form.data.prefix || '…'}
-                                            </span>
-                                            . It locks once published.
-                                        </>
-                                    ) : (
-                                        'Locked — the published system is served from this URL.'
-                                    )}
-                                </p>
                                 <InputError message={form.errors.prefix} />
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="grid gap-2">
                                 <Label>Tag color</Label>
-                                <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-9">
-                                    {tagColors.map((color) => (
-                                        <Tooltip key={color}>
-                                            <TooltipTrigger asChild>
-                                                <button
-                                                    type="button"
-                                                    aria-label={color}
-                                                    className={cn(
-                                                        'flex h-10 items-center justify-center rounded-md border',
-                                                        form.data.color ===
-                                                            color &&
-                                                            'border-primary ring-2 ring-primary/30',
-                                                    )}
-                                                    onClick={() => {
-                                                        form.setData(
-                                                            'color',
-                                                            color,
-                                                        );
-                                                        clearFieldErrors(
-                                                            form,
-                                                            'color',
-                                                        );
-                                                    }}
-                                                >
-                                                    <span
-                                                        className={cn(
-                                                            'size-5 rounded-full',
-                                                            COLOR_SWATCHES[
-                                                                color
-                                                            ] ??
-                                                                'bg-violet-500',
-                                                        )}
-                                                    />
-                                                </button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                {color}
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    ))}
-                                </div>
+                                <ColorPicker
+                                    colors={tagColors}
+                                    selected={form.data.color}
+                                    onSelect={(color) => {
+                                        form.setData('color', color);
+                                        clearFieldErrors(form, 'color');
+                                    }}
+                                />
                                 <InputError message={form.errors.color} />
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="grid gap-2">
                                 <Label htmlFor="system-description">
                                     Description
                                 </Label>
                                 <Textarea
                                     id="system-description"
                                     value={form.data.description}
+                                    placeholder="What is this system for?"
                                     onChange={(event) => {
                                         form.setData(
                                             'description',
@@ -719,14 +647,13 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                         );
                                         clearFieldErrors(form, 'description');
                                     }}
-                                    placeholder="What is this system for?"
                                 />
                                 <InputError message={form.errors.description} />
                             </div>
 
                             <InputError message={form.errors.icon} />
 
-                            <div className="flex items-center justify-end pt-2">
+                            <div className="flex items-center gap-2">
                                 <Button
                                     type="submit"
                                     disabled={form.processing}
@@ -735,109 +662,88 @@ export default function SystemView({ system, pages, tagColors }: Props) {
                                 </Button>
                             </div>
                         </form>
-                    </Section>
-                </div>
+                    </div>
 
-                <div className="space-y-10">
-                    <Section title="Overview">
-                        <dl className="space-y-3 text-sm">
-                            <div className="flex items-center justify-between gap-3">
-                                <dt className="text-muted-foreground">
-                                    Status
-                                </dt>
-                                <dd>
-                                    <Badge
-                                        variant={
-                                            system.status === 'published'
-                                                ? 'default'
-                                                : 'secondary'
-                                        }
-                                    >
-                                        {system.status === 'published'
-                                            ? 'Published'
-                                            : 'Unpublished'}
-                                    </Badge>
-                                </dd>
+                    <div className="space-y-10">
+                        <div className="space-y-6">
+                            <div className="flex items-start justify-between gap-3">
+                                <Heading
+                                    variant="small"
+                                    title="Pages"
+                                    description={
+                                        // With the system still a draft its prefix and
+                                        // slug can change, so no page may go live ahead
+                                        // of it and the publish action is absent until then.
+                                        system.status === 'published'
+                                            ? 'Every system keeps a starting page at its entry path. Add more pages to build the rest of it.'
+                                            : `Every system keeps a starting page at its entry path. Publish ${system.name} before you can publish any of its pages.`
+                                    }
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="shrink-0"
+                                    onClick={() => setPageCreateOpen(true)}
+                                >
+                                    <Plus className="size-4" />
+                                    Create page
+                                </Button>
                             </div>
 
-                            <div className="flex items-center justify-between gap-3">
-                                <dt className="text-muted-foreground">
-                                    Pending changes
-                                </dt>
-                                <dd>
-                                    {system.has_pending_changes ? 'Yes' : 'No'}
-                                </dd>
+                            <DataTable
+                                rows={pages}
+                                columns={pageColumns}
+                                getRowKey={(row) => row.key}
+                                emptyMessage="No pages yet."
+                                searchPlaceholder="Search pages…"
+                                onRowClick={(row) =>
+                                    router.visit(editPage([system.id, row.id]))
+                                }
+                                onPublish={submitPagePublish}
+                                canPublish={(row) => row.can_publish}
+                                isSync={(row) => row.is_sync}
+                                publishingKey={pagePublishingKey}
+                                onDelete={(row) => {
+                                    setPendingPageDelete(row);
+                                    setPageDeleteOpen(true);
+                                }}
+                                isProtected={(row) => !row.can_delete}
+                                protectedLabel="Starting Page"
+                                deletingKey={pageDeletingKey}
+                            />
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="flex items-start justify-between gap-3">
+                                <Heading
+                                    variant="small"
+                                    title="Tables"
+                                    description="Built in the Tables module under the system that owns them"
+                                />
+                                <span className="shrink-0 text-sm text-muted-foreground">
+                                    {system.tables_count}{' '}
+                                    {system.tables_count === 1
+                                        ? 'table'
+                                        : 'tables'}
+                                </span>
                             </div>
 
-                            <div className="flex items-center justify-between gap-3">
-                                <dt className="text-muted-foreground">Entry</dt>
-                                <dd className="font-mono text-xs">
-                                    {system.entry ?? '—'}
-                                </dd>
-                            </div>
-
-                            <div className="flex items-center justify-between gap-3">
-                                <dt className="text-muted-foreground">
-                                    Tables
-                                </dt>
-                                <dd>{system.tables_count}</dd>
-                            </div>
-                        </dl>
-                    </Section>
-
-                    <Section
-                        title="Tables"
-                        description="Tables this system owns are published from the Tables module — publishing the system never runs DDL."
-                    >
-                        <Button asChild variant="outline">
-                            <Link href={tablesIndex()}>Open Tables</Link>
-                        </Button>
-                    </Section>
-                </div>
-
-                <div className="lg:col-span-3">
-                    <Section
-                        title="Pages"
-                        description={
-                            // With the system still a draft its prefix and slug can
-                            // change, so no page may go live ahead of it and the
-                            // publish action is absent until then.
-                            system.status === 'published'
-                                ? 'Every system keeps a starting page at its entry path. Add more pages to build the rest of it.'
-                                : `Every system keeps a starting page at its entry path. Publish ${system.name} before you can publish any of its pages.`
-                        }
-                        action={
-                            <Button
-                                type="button"
-                                onClick={() => setPageCreateOpen(true)}
-                            >
-                                <Plus className="size-4" />
-                                New page
+                            {/* The flag brings that page's Cancel back here. */}
+                            <Button variant="outline" asChild>
+                                <Link
+                                    href={createTable({
+                                        query: {
+                                            from: 'system',
+                                            system: String(system.id),
+                                        },
+                                    })}
+                                >
+                                    <Plus className="size-4" />
+                                    Create table
+                                </Link>
                             </Button>
-                        }
-                    >
-                        <DataTable
-                            rows={pages}
-                            columns={pageColumns}
-                            getRowKey={(row) => row.key}
-                            emptyMessage="No pages yet."
-                            searchPlaceholder="Search pages…"
-                            onRowClick={(row) =>
-                                router.visit(editPage([system.id, row.id]))
-                            }
-                            onPublish={submitPagePublish}
-                            canPublish={(row) => row.can_publish}
-                            isSync={(row) => row.is_sync}
-                            publishingKey={pagePublishingKey}
-                            onDelete={(row) => {
-                                setPendingPageDelete(row);
-                                setPageDeleteOpen(true);
-                            }}
-                            isProtected={(row) => !row.can_delete}
-                            protectedLabel="Starting Page"
-                            deletingKey={pageDeletingKey}
-                        />
-                    </Section>
+                        </div>
+                    </div>
                 </div>
             </div>
 
