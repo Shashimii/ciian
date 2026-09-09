@@ -144,7 +144,11 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registration is deliberately absent. Ciian is a control panel, not a
+        // public site: accounts are created by an admin from /admin/users, so
+        // the role is chosen rather than defaulted. Re-enabling this would also
+        // restore Fortify's /register routes and the sign-up links that used to
+        // point at them.
         Features::resetPasswords(),
         Features::emailVerification(),
     ],

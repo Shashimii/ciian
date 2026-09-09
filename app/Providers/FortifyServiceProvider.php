@@ -91,9 +91,9 @@ class FortifyServiceProvider extends ServiceProvider
             'status' => $request->session()->get('status'),
         ]));
 
-        Fortify::registerView(fn () => Inertia::render('core/auth/register', [
-            'passwordRules' => Password::defaults()->toPasswordRulesString(),
-        ]));
+        // No register view: registration is disabled in config/fortify.php and
+        // the page it rendered was removed with it. Re-enabling the feature
+        // means restoring both.
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('core/auth/two-factor-challenge'));
 
