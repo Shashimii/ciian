@@ -74,6 +74,8 @@ export type { RelationTableOption };
 
 type Props = {
     mode: 'create' | 'edit';
+    /** Where Cancel goes. Defaults to the Tables index. */
+    cancelHref?: string;
     table?: TableRow | null;
     systems: SystemOption[];
     columnTypes: Record<string, string>;
@@ -270,6 +272,7 @@ function SortableColumnRow({
 }
 
 export default function TableForm({
+    cancelHref = tablesIndex.url(),
     mode,
     table = null,
     systems,
@@ -562,7 +565,7 @@ export default function TableForm({
             headerActions: (
                 <div className="flex items-center gap-2">
                     <Button variant="outline" asChild>
-                        <Link href={tablesIndex()}>Cancel</Link>
+                        <Link href={cancelHref}>Cancel</Link>
                     </Button>
                     <Button
                         type="submit"
@@ -578,7 +581,7 @@ export default function TableForm({
         return () => {
             resetLayoutProps();
         };
-    }, [form.processing, isDirty, isEdit, jsonError]);
+    }, [cancelHref, form.processing, isDirty, isEdit, jsonError]);
 
     return (
         <form

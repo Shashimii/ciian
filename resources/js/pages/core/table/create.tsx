@@ -7,12 +7,15 @@ type Props = {
     systems: SystemOption[];
     columnTypes: Record<string, string>;
     relationTables: RelationTableOption[];
+    /** Where Cancel goes: the Tables index, or the system create page that linked here. */
+    cancelHref: string;
 };
 
 export default function TableCreate({
     systems,
     columnTypes,
     relationTables,
+    cancelHref,
 }: Props) {
     return (
         <>
@@ -28,6 +31,7 @@ export default function TableCreate({
                     systems={systems}
                     columnTypes={columnTypes}
                     relationTables={relationTables}
+                    cancelHref={cancelHref}
                 />
             </div>
         </>

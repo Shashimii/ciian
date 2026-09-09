@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Ciian\Database\StoreTableRequest;
 use App\Http\Requests\Ciian\Database\UpdateTableRequest;
 use App\Models\Ciian\Database\InternalTable;
+use App\Models\Ciian\System\System;
 use App\Models\Ciian\System\SystemTable;
 use App\Support\TableIndexPresenter;
 use Illuminate\Http\RedirectResponse;
@@ -33,12 +34,27 @@ class TableController extends Controller
     /**
      * Show the create table form.
      */
-    public function create(TableIndexPresenter $presenter): Response
+    public function create(Request $request, TableIndexPresenter $presenter): Response
     {
+        // The system pages link here; Cancel should return the user there
+        // rather than to the index. A fixed flag plus a checked id rather than
+        // a free URL, so nothing on the query string can turn Cancel into an
+        // open redirect.
+        $cancelHref = route('tables.index');
+
+        if ($request->query('from') === 'system') {
+            $systemId = (int) $request->query('system', 0);
+
+            $cancelHref = $systemId > 0 && System::query()->whereKey($systemId)->exists()
+                ? route('systems.show', $systemId)
+                : route('systems.create');
+        }
+
         return Inertia::render('core/table/create', [
             'systems' => $presenter->systemOptions(),
             'columnTypes' => $presenter->columnTypeLabels(),
             'relationTables' => $presenter->relationTables(),
+            'cancelHref' => $cancelHref,
         ]);
     }
 
