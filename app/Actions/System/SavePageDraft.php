@@ -12,7 +12,10 @@ use InvalidArgumentException;
 
 class SavePageDraft
 {
-    public function __construct(private PageShapeBuilder $shapes) {}
+    public function __construct(
+        private PageShapeBuilder $shapes,
+        private SyncSystemPermissions $permissions,
+    ) {}
 
     /**
      * Create the starting page every system is guaranteed to have.
@@ -185,7 +188,7 @@ class SavePageDraft
     {
         $shape = $this->buildShape($name, $slug, $system->slug, $isIndex, []);
 
-        return Page::query()->create([
+        $page = Page::query()->create([
             'system_id' => $system->id,
             'name' => $shape['pg_name'],
             'slug' => $shape['pg_slug'],
@@ -194,6 +197,13 @@ class SavePageDraft
             'unpub_shape' => $shape,
             'pub_shape' => null,
         ]);
+
+        // Every page a system owns gets a permission guarding it, minted here
+        // rather than at the call sites so the starting page created with the
+        // system and a page added later both get one.
+        $this->permissions->createFor($system, $page);
+
+        return $page;
     }
 
     /**

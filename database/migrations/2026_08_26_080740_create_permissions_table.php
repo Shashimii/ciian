@@ -16,6 +16,13 @@ return new class extends Migration
             $table->string('name')->unique();
             $table->string('slug')->unique();
             $table->text('description')->nullable();
+            // Null for the platform's own permissions. Set for one a created
+            // system minted for a page of its own, so those disappear with the
+            // system rather than outliving it as unassignable rows.
+            $table->foreignId('system_id')
+                ->nullable()
+                ->constrained('ciian_sys')
+                ->cascadeOnDelete();
             $table->timestamps();
         });
     }

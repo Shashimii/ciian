@@ -10,6 +10,7 @@ class DeletePage
     public function __construct(
         private GeneratePageFile $files,
         private GenerateSystemRoutes $routes,
+        private SyncSystemPermissions $permissions,
     ) {}
 
     /**
@@ -30,6 +31,11 @@ class DeletePage
         $system = $page->system;
 
         $page->delete();
+
+        // The page's permission goes with it: a permission guarding a page that
+        // no longer exists can still be attached to a role, where it grants
+        // access to nothing and reads as a mistake.
+        $this->permissions->removeFor($system, $page);
 
         // The row goes first, mirroring how a component is deleted: a file that
         // outlives its row is invisible to the builder and blocks reusing the slug.
