@@ -20,6 +20,7 @@ class PermissionIndexPresenter
     {
         return array_values(
             Permission::query()
+                ->with('system')
                 ->withCount('roles')
                 ->orderBy('name')
                 ->get()
@@ -44,6 +45,15 @@ class PermissionIndexPresenter
             'role_count' => (int) ($permission->roles_count ?? 0),
             // `User::hasPermission` treats this one as a wildcard over the rest.
             'is_root' => $permission->isRoot(),
+            // Null for a platform permission; the owning system otherwise, so
+            // the two kinds are told apart without reading the slug.
+            'system' => $permission->belongsToSystem() && $permission->system !== null
+                ? [
+                    'name' => $permission->system->name,
+                    'icon' => $permission->system->icon,
+                    'color' => $permission->system->color,
+                ]
+                : null,
         ];
     }
 }

@@ -8,4 +8,10 @@ export type PermissionRow = {
     role_count: number;
     /** `User::hasPermission` treats this one as a wildcard over the rest. */
     is_root: boolean;
+    /** Null for a platform permission; the owning created system otherwise. */
+    system: {
+        name: string;
+        icon: string;
+        color: string | null;
+    } | null;
 };

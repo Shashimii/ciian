@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { useMemo } from 'react';
 import DataTable from '@/components/core/data-table';
 import type { DataTableColumn } from '@/components/core/data-table';
+import TagBadge from '@/components/core/tag-badge';
 import { Badge } from '@/components/ui/badge';
 import { index as permissionsIndex } from '@/routes/permissions';
 import type { PermissionRow } from '@/types/permission';
@@ -46,6 +47,29 @@ export default function PermissionIndex({ permissions }: Props) {
                         {row.slug}
                     </span>
                 ),
+            },
+            {
+                id: 'system',
+                header: 'System',
+                sortable: true,
+                sortValue: (row) => row.system?.name ?? '',
+                searchValue: (row) => row.system?.name ?? 'platform',
+                cell: (row) =>
+                    row.system ? (
+                        <TagBadge
+                            system={{
+                                type: 'system',
+                                label: row.system.name,
+                                slug: row.system.name,
+                                icon: row.system.icon,
+                                color: row.system.color,
+                            }}
+                        />
+                    ) : (
+                        <span className="text-xs text-muted-foreground">
+                            Platform
+                        </span>
+                    ),
             },
             {
                 id: 'roles',
