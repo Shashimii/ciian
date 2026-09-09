@@ -50,3 +50,10 @@ resources/js/pages/core/employee/show.tsx
 - Nested resources stay nested: `resources/js/pages/core/{parent}/{resource}/index.tsx`.
 - Do **not** invent custom page names (`list`, `edit`, `details`, `form`, etc.) unless needed. If a custom name seems necessary, **ask first**.
 - Existing non-resource pages (`core/auth/`, `core/settings/`, `core/dashboard.tsx`, `core/welcome.tsx`) keep their current paths; do not rename them to fit this pattern.
+
+## Slug fields are derived from the name and never typed
+Every slug input in a create form is `readOnly disabled` and auto-derives from the name field as it is typed — the system slug, a page's slug, a table's `tbl_db_name`, a role's slug. The user never edits a slug directly.
+
+This is the pattern the Roles sheet, the Ciian settings panel and the table form already follow; a create page that lets a slug be hand-edited breaks it. The helper text under the field should say it is derived from the name.
+
+The URL prefix on a system is not a slug and is not covered: it is typed by the user and never derived from the name, because it is the public URL rather than an internal identifier. Typed input is still normalized to URL-safe characters.

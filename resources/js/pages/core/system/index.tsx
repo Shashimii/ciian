@@ -1,48 +1,35 @@
 import {
     Head,
+    Link,
     resetLayoutProps,
     router,
     setLayoutProps,
-    useForm,
 } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
 import { toast } from 'sonner';
 import DataTable from '@/components/core/data-table';
 import type { DataTableColumn } from '@/components/core/data-table';
-import FormSidebar from '@/components/core/form-sidebar';
-import InputError from '@/components/core/input-error';
 import { ConfirmDialog, Modal } from '@/components/core/modal';
 import PasswordInput from '@/components/core/password-input';
 import TagBadge from '@/components/core/tag-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { clearFieldErrors } from '@/lib/clear-field-errors';
-import { resolveLucideIcon, TABLE_ICON_OPTIONS } from '@/lib/lucide-icons';
-import { cn } from '@/lib/utils';
+import { resolveLucideIcon } from '@/lib/lucide-icons';
 import { edit as editCiian } from '@/routes/ciian';
 import {
+    create,
     destroy,
     index as systemsIndex,
     publish,
     show,
-    store,
 } from '@/routes/systems';
 import type { SystemRow } from '@/types';
 
 type Props = {
     systems: SystemRow[];
-    tagColors: string[];
 };
 
 type ErrorDetail = {
@@ -53,128 +40,7 @@ type ErrorDetail = {
 /** Longer than this and the message goes to a modal instead of a toast. */
 const ERROR_TOAST_MAX_LENGTH = 120;
 
-function slugify(value: string): string {
-    return value
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '_')
-        .replace(/^_+|_+$/g, '');
-}
-
-/** URL segments read better with dashes than the slug's underscores. */
-function prefixify(value: string): string {
-    return value
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-}
-
-const COLOR_SWATCHES: Record<string, string> = {
-    violet: 'bg-violet-500',
-    purple: 'bg-purple-500',
-    fuchsia: 'bg-fuchsia-500',
-    pink: 'bg-pink-500',
-    rose: 'bg-rose-500',
-    red: 'bg-red-500',
-    orange: 'bg-orange-500',
-    amber: 'bg-amber-500',
-    yellow: 'bg-yellow-500',
-    lime: 'bg-lime-500',
-    green: 'bg-green-500',
-    emerald: 'bg-emerald-500',
-    teal: 'bg-teal-500',
-    cyan: 'bg-cyan-500',
-    sky: 'bg-sky-500',
-    blue: 'bg-blue-500',
-    indigo: 'bg-indigo-500',
-};
-
-type IconPickerProps = {
-    open: boolean;
-    selected: string;
-    onSelect: (icon: string) => void;
-};
-
-/** Full-width grid of icon options, shown under the icon + name row. */
-function IconPicker({ open, selected, onSelect }: IconPickerProps) {
-    if (!open) {
-        return null;
-    }
-
-    return (
-        <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-12">
-            {TABLE_ICON_OPTIONS.map((iconName) => {
-                const IconComponent = resolveLucideIcon(iconName);
-
-                return (
-                    <Tooltip key={iconName}>
-                        <TooltipTrigger asChild>
-                            <button
-                                type="button"
-                                aria-label={iconName}
-                                className={cn(
-                                    'flex h-10 items-center justify-center rounded-md border',
-                                    selected === iconName &&
-                                        'border-primary bg-primary/10 text-primary',
-                                )}
-                                onClick={() => onSelect(iconName)}
-                            >
-                                {IconComponent && (
-                                    <Icon
-                                        iconNode={IconComponent}
-                                        className="size-4"
-                                    />
-                                )}
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>{iconName}</TooltipContent>
-                    </Tooltip>
-                );
-            })}
-        </div>
-    );
-}
-
-type ColorPickerProps = {
-    colors: string[];
-    selected: string;
-    onSelect: (color: string) => void;
-};
-
-function ColorPicker({ colors, selected, onSelect }: ColorPickerProps) {
-    return (
-        <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-9">
-            {colors.map((color) => (
-                <Tooltip key={color}>
-                    <TooltipTrigger asChild>
-                        <button
-                            type="button"
-                            aria-label={color}
-                            className={cn(
-                                'flex h-10 items-center justify-center rounded-md border',
-                                selected === color &&
-                                    'border-primary ring-2 ring-primary/30',
-                            )}
-                            onClick={() => onSelect(color)}
-                        >
-                            <span
-                                className={cn(
-                                    'size-5 rounded-full',
-                                    COLOR_SWATCHES[color] ?? 'bg-violet-500',
-                                )}
-                            />
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent>{color}</TooltipContent>
-                </Tooltip>
-            ))}
-        </div>
-    );
-}
-
-export default function SystemIndex({ systems, tagColors }: Props) {
-    const [createOpen, setCreateOpen] = useState(false);
+export default function SystemIndex({ systems }: Props) {
     const [publishingKey, setPublishingKey] = useState<string | null>(null);
     const [deletingKey, setDeletingKey] = useState<string | null>(null);
     const [deleteOpen, setDeleteOpen] = useState(false);
@@ -183,20 +49,6 @@ export default function SystemIndex({ systems, tagColors }: Props) {
     const [rootPassword, setRootPassword] = useState('');
     const [errorOpen, setErrorOpen] = useState(false);
     const [errorDetail, setErrorDetail] = useState<ErrorDetail | null>(null);
-
-    const [showCreateIconPicker, setShowCreateIconPicker] = useState(false);
-    const [iconTooltipOpen, setIconTooltipOpen] = useState(false);
-
-    const createForm = useForm({
-        name: '',
-        slug: '',
-        prefix: '',
-        icon: 'Box',
-        color: 'violet',
-        description: '',
-    });
-
-    const selectedCreateIcon = resolveLucideIcon(createForm.data.icon);
 
     // Keep the payload while the dialog fades out so its content stays stable.
     useEffect(() => {
@@ -228,9 +80,11 @@ export default function SystemIndex({ systems, tagColors }: Props) {
         setLayoutProps({
             headerActions: (
                 <div className="flex items-center gap-2">
-                    <Button type="button" onClick={() => setCreateOpen(true)}>
-                        <Plus className="size-4" />
-                        New system
+                    <Button asChild>
+                        <Link href={create()}>
+                            <Plus className="size-4" />
+                            New system
+                        </Link>
                     </Button>
                 </div>
             ),
@@ -343,30 +197,6 @@ export default function SystemIndex({ systems, tagColors }: Props) {
                     setErrorOpen(true);
                 },
             },
-        });
-    };
-
-    const resetCreateForm = () => {
-        createForm.reset();
-        createForm.clearErrors();
-        setShowCreateIconPicker(false);
-    };
-
-    const closeCreate = (open: boolean) => {
-        setCreateOpen(open);
-
-        if (!open) {
-            window.setTimeout(resetCreateForm, 200);
-        }
-    };
-
-    const submitCreate = (event: FormEvent) => {
-        event.preventDefault();
-
-        createForm.post(store.url(), {
-            preserveScroll: true,
-            invalidateCacheTags: ['systems', 'tables'],
-            onSuccess: () => closeCreate(false),
         });
     };
 
@@ -548,179 +378,6 @@ export default function SystemIndex({ systems, tagColors }: Props) {
                     />
                 </div>
             </ConfirmDialog>
-
-            <FormSidebar
-                open={createOpen}
-                onOpenChange={closeCreate}
-                title="New system"
-                description="Created systems own tables in ciian_sys_tbl."
-                footer={
-                    <div className="flex items-center justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => closeCreate(false)}
-                            disabled={createForm.processing}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            form="system-create-form"
-                            disabled={createForm.processing}
-                        >
-                            Create system
-                        </Button>
-                    </div>
-                }
-            >
-                <form
-                    id="system-create-form"
-                    noValidate
-                    className="space-y-4"
-                    onSubmit={submitCreate}
-                >
-                    <div className="flex items-end gap-3">
-                        <div className="order-1 min-w-0 flex-1 space-y-2">
-                            <Label htmlFor="system-name">Name</Label>
-                            <Input
-                                id="system-name"
-                                value={createForm.data.name}
-                                onChange={(event) => {
-                                    const name = event.target.value;
-                                    createForm.setData('name', name);
-                                    createForm.setData('slug', slugify(name));
-                                    createForm.setData(
-                                        'prefix',
-                                        prefixify(name),
-                                    );
-                                    clearFieldErrors(
-                                        createForm,
-                                        'name',
-                                        'slug',
-                                        'prefix',
-                                    );
-                                }}
-                                placeholder="Enter System Name"
-                            />
-                            <InputError message={createForm.errors.name} />
-                        </div>
-
-                        <Tooltip
-                            open={iconTooltipOpen && createOpen}
-                            onOpenChange={setIconTooltipOpen}
-                        >
-                            <TooltipTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="order-2 flex size-12 shrink-0 items-center justify-center rounded-xl border bg-muted/40 text-foreground transition-colors hover:border-primary/40 hover:bg-muted/60"
-                                    aria-label="Change icon"
-                                    onPointerEnter={() =>
-                                        setIconTooltipOpen(true)
-                                    }
-                                    onPointerLeave={() =>
-                                        setIconTooltipOpen(false)
-                                    }
-                                    onClick={() =>
-                                        setShowCreateIconPicker(
-                                            (current) => !current,
-                                        )
-                                    }
-                                >
-                                    {selectedCreateIcon && (
-                                        <Icon
-                                            iconNode={selectedCreateIcon}
-                                            className="size-7"
-                                        />
-                                    )}
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Change icon</TooltipContent>
-                        </Tooltip>
-                    </div>
-
-                    <IconPicker
-                        open={showCreateIconPicker}
-                        selected={createForm.data.icon}
-                        onSelect={(icon) => {
-                            createForm.setData('icon', icon);
-                            clearFieldErrors(createForm, 'icon');
-                            setShowCreateIconPicker(false);
-                        }}
-                    />
-
-                    <div className="space-y-2">
-                        <Label htmlFor="system-slug">Slug</Label>
-                        <Input
-                            id="system-slug"
-                            value={createForm.data.slug}
-                            readOnly
-                            placeholder="Enter System Slug"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Identifies the system internally and names its page
-                            folder. Locks once published.
-                        </p>
-                        <InputError message={createForm.errors.slug} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="system-prefix">URL prefix</Label>
-                        <Input
-                            id="system-prefix"
-                            value={createForm.data.prefix}
-                            onChange={(event) => {
-                                createForm.setData(
-                                    'prefix',
-                                    event.target.value,
-                                );
-                                clearFieldErrors(createForm, 'prefix');
-                            }}
-                            placeholder="Enter URL Prefix"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            The system is served from{' '}
-                            <span className="font-mono">
-                                /{createForm.data.prefix || '…'}
-                            </span>{' '}
-                            once published. It locks at that point.
-                        </p>
-                        <InputError message={createForm.errors.prefix} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Tag color</Label>
-                        <ColorPicker
-                            colors={tagColors}
-                            selected={createForm.data.color}
-                            onSelect={(color) => {
-                                createForm.setData('color', color);
-                                clearFieldErrors(createForm, 'color');
-                            }}
-                        />
-                        <InputError message={createForm.errors.color} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="system-description">Description</Label>
-                        <Textarea
-                            id="system-description"
-                            value={createForm.data.description}
-                            onChange={(event) => {
-                                createForm.setData(
-                                    'description',
-                                    event.target.value,
-                                );
-                                clearFieldErrors(createForm, 'description');
-                            }}
-                            placeholder="What is this system for?"
-                        />
-                        <InputError message={createForm.errors.description} />
-                    </div>
-
-                    <InputError message={createForm.errors.icon} />
-                </form>
-            </FormSidebar>
 
             <Modal
                 open={errorOpen}

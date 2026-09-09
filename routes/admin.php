@@ -35,6 +35,8 @@ Route::prefix('admin')->group(function () {
         Route::middleware('permission:systems.manage')->group(function () {
             Route::get('systems', [SystemController::class, 'index'])->name('systems.index');
             Route::post('systems', [SystemController::class, 'store'])->name('systems.store');
+            // Registered before `systems/{system}` so the literal path wins.
+            Route::get('systems/create', [SystemController::class, 'create'])->name('systems.create');
             Route::get('systems/{system}', [SystemController::class, 'show'])
                 ->name('systems.show');
             Route::patch('systems/{system}', [SystemController::class, 'update'])

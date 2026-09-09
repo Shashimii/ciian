@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Ciian\System;
 
+use App\Models\Ciian\System\Page;
 use App\Support\SystemPagePath;
 use App\Support\SystemUrlPrefix;
 use App\Support\TagColors;
@@ -43,6 +44,18 @@ class StoreSystemRequest extends FormRequest
             'icon' => ['sometimes', 'string', 'max:255'],
             'color' => ['sometimes', 'string', Rule::in(TagColors::OPTIONS)],
             'description' => ['nullable', 'string', 'max:1000'],
+
+            // Pages beyond the starting one, which every system gets anyway.
+            'pages' => ['sometimes', 'array', 'max:50'],
+            'pages.*.name' => ['required', 'string', 'max:255'],
+            'pages.*.slug' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-z][a-z0-9_]*$/',
+                Rule::notIn([Page::INDEX_SLUG]),
+                'distinct',
+            ],
         ];
     }
 
@@ -54,6 +67,9 @@ class StoreSystemRequest extends FormRequest
         return [
             'prefix.not_in' => __('That URL prefix is reserved by Ciian. Pick another.'),
             'prefix.regex' => __('The URL prefix may only use lowercase letters, numbers, dashes and underscores.'),
+            'pages.*.slug.not_in' => __('The starting page is created automatically and owns that slug.'),
+            'pages.*.slug.distinct' => __('Two pages cannot share a slug.'),
+            'pages.*.slug.regex' => __('A page slug may only use lowercase letters, numbers and underscores.'),
         ];
     }
 
@@ -64,7 +80,8 @@ class StoreSystemRequest extends FormRequest
      *     prefix: string,
      *     icon?: string|null,
      *     color?: string|null,
-     *     description?: string|null
+     *     description?: string|null,
+     *     pages: list<array{name: string, slug: string}>
      * }
      */
     public function systemPayload(): array
@@ -84,6 +101,10 @@ class StoreSystemRequest extends FormRequest
                     : (string) $validated[$option];
             }
         }
+
+        $payload['pages'] = is_array($validated['pages'] ?? null)
+            ? array_values($validated['pages'])
+            : [];
 
         return $payload;
     }

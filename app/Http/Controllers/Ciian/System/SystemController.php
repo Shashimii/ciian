@@ -10,6 +10,7 @@ use App\Http\Requests\Ciian\System\StoreSystemRequest;
 use App\Http\Requests\Ciian\System\UpdateCiianConfigRequest;
 use App\Http\Requests\Ciian\System\UpdateSystemRequest;
 use App\Models\Ciian\Core\CiianConfig;
+use App\Models\Ciian\System\Page;
 use App\Models\Ciian\System\System as CreatedSystem;
 use App\Support\SystemIndexPresenter;
 use App\Support\TagColors;
@@ -27,11 +28,29 @@ class SystemController extends Controller
      */
     public function index(SystemIndexPresenter $presenter): Response
     {
-        // The platform's own config is edited under Settings, so the index only
-        // needs the rows and the palette its create form offers.
+        // Just the rows: creating a system happens on its own page now, so the
+        // index has no form and no need for the colour palette.
         return Inertia::render('core/system/index', [
             'systems' => $presenter->systems(),
+        ]);
+    }
+
+    /**
+     * The form for a new system.
+     *
+     * A full page rather than a sheet: a system is defined with its pages and
+     * tables in one pass, which is more than a side panel can hold.
+     */
+    public function create(): Response
+    {
+        return Inertia::render('core/system/create', [
             'tagColors' => TagColors::OPTIONS,
+            // Shown as a locked row so it is clear the system always gets one;
+            // the form does not submit it, SaveSystemDraft creates it.
+            'indexPage' => [
+                'name' => Page::INDEX_NAME,
+                'slug' => Page::INDEX_SLUG,
+            ],
         ]);
     }
 

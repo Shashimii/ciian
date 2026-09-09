@@ -19,7 +19,8 @@ class SaveSystemDraft
      * Create a draft system row and store the normalized shape in unpub_shape.
      *
      * The system's starting page is created in the same transaction, so a system
-     * never exists without an entry point to serve.
+     * never exists without an entry point to serve. Tables are not created here:
+     * they are built in the Tables module under the system that owns them.
      *
      * @param  array{
      *     name: string,
@@ -27,7 +28,8 @@ class SaveSystemDraft
      *     prefix: string,
      *     icon?: string|null,
      *     color?: string|null,
-     *     description?: string|null
+     *     description?: string|null,
+     *     pages?: list<array{name: string, slug: string}>
      * }  $input
      */
     public function create(array $input): System
@@ -57,6 +59,15 @@ class SaveSystemDraft
             ]);
 
             $this->pages->createIndex($system);
+
+            // Everything the form defined lands with the system or not at all:
+            // a system holding half its pages would look complete and not be.
+            foreach ($input['pages'] ?? [] as $page) {
+                $this->pages->create($system, [
+                    'name' => $page['name'],
+                    'slug' => $page['slug'],
+                ]);
+            }
 
             return $system;
         });
